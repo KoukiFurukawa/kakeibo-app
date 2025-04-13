@@ -2,11 +2,11 @@
 
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
-import { useState } from 'react';
+// import { useState } from 'react';
 
 const Navbar = () => {
     const pathname = usePathname();
-    const [isMenuOpen, setIsMenuOpen] = useState(false);
+    // const [isMenuOpen, setIsMenuOpen] = useState(false);
 
     const navItems = [
         { name: 'ホーム', path: '/' },
