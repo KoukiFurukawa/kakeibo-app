@@ -16,23 +16,12 @@ const footerItems = [
         )
     },
     {
-        name: '入力',
-        path: '/input',
+        name: 'ToDo',
+        path: '/todo',
         icon: (isActive: boolean) => (
             <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={`w-6 h-6 mx-auto ${isActive ? 'text-blue-500' : 'text-gray-500'}`}>
-                <circle cx="12" cy="12" r="10" />
-                <line x1="12" y1="8" x2="12" y2="16" />
-                <line x1="8" y1="12" x2="16" y2="12" />
-            </svg>
-        )
-    },
-    {
-        name: '固定費',
-        path: '/fixed-costs',
-        icon: (isActive: boolean) => (
-            <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={`w-6 h-6 mx-auto ${isActive ? 'text-blue-500' : 'text-gray-500'}`}>
-                <rect x="2" y="7" width="20" height="14" rx="2" ry="2" />
-                <path d="M16 21V5a2 2 0 0 0-2-2h-4a2 2 0 0 0-2 2v16" />
+                <path d="M9 11l3 3 8-8" />
+                <path d="M21 12c0 4.97-4.03 9-9 9s-9-4.03-9-9 4.03-9 9-9c1.84 0 3.55.56 4.96 1.51" />
             </svg>
         )
     },
@@ -45,6 +34,16 @@ const footerItems = [
                 <line x1="16" y1="2" x2="16" y2="6" />
                 <line x1="8" y1="2" x2="8" y2="6" />
                 <line x1="3" y1="10" x2="21" y2="10" />
+            </svg>
+        )
+    },
+    {
+        name: '設定',
+        path: '/settings',
+        icon: (isActive: boolean) => (
+            <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={`w-6 h-6 mx-auto ${isActive ? 'text-blue-500' : 'text-gray-500'}`}>
+                <circle cx="12" cy="12" r="3" />
+                <path d="M12 1v6m0 6v6m11-7h-6m-6 0H1" />
             </svg>
         )
     }
