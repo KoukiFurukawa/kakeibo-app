@@ -1,12 +1,34 @@
 'use client';
 
 import Link from 'next/link';
-import { usePathname } from 'next/navigation';
-import { useState } from 'react';
+import { usePathname, useRouter } from 'next/navigation';
+import { useState, useEffect } from 'react';
+import { supabase } from '@/utils/manage_supabase';
+import { useHandleLogout } from '@/utils/manage_supabase';
+import type { User } from '@supabase/supabase-js';
 
 const Navbar = () => {
     const pathname = usePathname();
     const [isNotificationOpen, setIsNotificationOpen] = useState(false);
+    const [user, setUser] = useState<User | null>(null);
+
+    useEffect(() => {
+        const getUser = async () => {
+            const { data: { user } } = await supabase.auth.getUser();
+            setUser(user);
+        };
+        getUser();
+
+        const { data: { subscription } } = supabase.auth.onAuthStateChange(
+            (event, session) => {
+                setUser(session?.user ?? null);
+            }
+        );
+
+        return () => subscription.unsubscribe();
+    }, [supabase.auth]);
+
+    
 
     const navItems = [
         { name: 'ホーム', path: '/' },
@@ -26,6 +48,8 @@ const Navbar = () => {
         const currentItem = navItems.find(item => item.path === pathname);
         return currentItem ? currentItem.name : 'ホーム';
     };
+
+    const handleLogout = useHandleLogout();
 
     return (
         <nav className="bg-white shadow-md sticky top-0 z-10">
@@ -80,13 +104,29 @@ const Navbar = () => {
                                 <span className="absolute top-0 right-0 block h-2 w-2 rounded-full bg-red-500"></span>
                             )}
                         </button>
-                    </div>
 
+                        {/* User menu */}
+                        <div className="flex items-center space-x-2">
+                            <span className="text-sm text-gray-600">
+                                {user?.email}
+                            </span>
+                            <button
+                                onClick={handleLogout}
+                                className="text-sm text-red-600 hover:text-red-800"
+                            >
+                                ログアウト
+                            </button>
+                        </div>
+                    </div> 
+                    
                     {/* モバイル用通知ボタン */}
-                    <div className="md:hidden flex items-center">
+                    <div className="md:hidden flex items-center space-x-2 w-[70%]">
+                        <div className="text-sm text-gray-600 w-[80%] truncate text-right">
+                            {user?.email ? user.email : 'ログインしていません'}
+                        </div>
                         <button
                             onClick={() => setIsNotificationOpen(true)}
-                            className="relative p-2 rounded-md hover:bg-gray-100 focus:outline-none"
+                            className="relative p-2 rounded-md hover:bg-gray-100 focus:outline-none flex-shrink-0"
                         >
                             <svg
                                 className="h-6 w-6"
