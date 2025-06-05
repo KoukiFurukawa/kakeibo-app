@@ -1,6 +1,7 @@
 'use client';
 
 import { useState } from 'react';
+import { useHandleLogout } from '@/utils/manage_supabase';
 
 export default function SettingsPage() {
     const [settings, setSettings] = useState({
@@ -35,30 +36,10 @@ export default function SettingsPage() {
         }));
     };
 
-    const handleSave = () => {
-        // 設定を保存する処理を実装
-        alert('設定が保存されました');
-    };
-
-    const handleExportData = () => {
-        // データエクスポート処理を実装
-        alert('データをエクスポートしました');
-    };
-
-    const handleImportData = () => {
-        // データインポート処理を実装
-        alert('データをインポートしました');
-    };
-
-    const handleResetData = () => {
-        if (confirm('全てのデータが削除されます。本当に実行しますか？')) {
-            alert('データをリセットしました');
-        }
-    };
+    const handleLogout = useHandleLogout();
 
     return (
         <div className="space-y-4 sm:space-y-6">
-            <h1 className="text-xl sm:text-2xl font-bold">設定</h1>
 
             {/* 基本設定 */}
             <div className="bg-white shadow-md rounded-lg p-4 sm:p-6">
@@ -167,81 +148,26 @@ export default function SettingsPage() {
                 </div>
             </div>
 
-            {/* テーマ設定 */}
+            {/* アカウント管理 */}
             <div className="bg-white shadow-md rounded-lg p-4 sm:p-6">
-                <h2 className="text-lg sm:text-xl font-semibold mb-4">外観設定</h2>
-                
-                <div className="space-y-4">
-                    <div>
-                        <label className="block text-sm font-medium text-gray-700 mb-2">テーマ</label>
-                        <select
-                            value={settings.theme}
-                            onChange={(e) => handleInputChange('theme', e.target.value)}
-                            className="w-full p-2 border border-gray-300 rounded-md text-sm sm:text-base"
-                        >
-                            <option value="light">ライト</option>
-                            <option value="dark">ダーク</option>
-                            <option value="auto">システム設定に従う</option>
-                        </select>
-                    </div>
-
-                    <div className="flex items-center justify-between">
-                        <span className="text-sm sm:text-base">自動バックアップ</span>
-                        <input
-                            type="checkbox"
-                            checked={settings.autoBackup}
-                            onChange={(e) => handleInputChange('autoBackup', e.target.checked)}
-                            className="h-4 w-4"
-                        />
-                    </div>
-                </div>
-            </div>
-
-            {/* データ管理 */}
-            <div className="bg-white shadow-md rounded-lg p-4 sm:p-6">
-                <h2 className="text-lg sm:text-xl font-semibold mb-4">データ管理</h2>
+                <h2 className="text-lg sm:text-xl font-semibold mb-4">アカウント管理</h2>
                 
                 <div className="space-y-3">
                     <button
-                        onClick={handleExportData}
-                        className="w-full bg-green-500 text-white py-2 px-4 rounded-md hover:bg-green-600 text-sm sm:text-base"
+                        onClick={handleLogout}
+                        className="w-full bg-purple-500 text-white py-2 px-4 rounded-md hover:bg-purple-600 text-sm sm:text-base"
                     >
-                        データをエクスポート
-                    </button>
-
-                    <button
-                        onClick={handleImportData}
-                        className="w-full bg-blue-500 text-white py-2 px-4 rounded-md hover:bg-blue-600 text-sm sm:text-base"
-                    >
-                        データをインポート
-                    </button>
-
-                    <button
-                        onClick={handleResetData}
-                        className="w-full bg-red-500 text-white py-2 px-4 rounded-md hover:bg-red-600 text-sm sm:text-base"
-                    >
-                        全データをリセット
+                        ログアウト
                     </button>
                 </div>
-            </div>
-
-            {/* 保存ボタン */}
-            <div className="bg-white shadow-md rounded-lg p-4 sm:p-6">
-                <button
-                    onClick={handleSave}
-                    className="w-full bg-blue-500 text-white py-3 px-4 rounded-md hover:bg-blue-600 text-sm sm:text-base font-medium"
-                >
-                    設定を保存
-                </button>
             </div>
 
             {/* アプリ情報 */}
             <div className="bg-white shadow-md rounded-lg p-4 sm:p-6">
                 <h2 className="text-lg sm:text-xl font-semibold mb-4">アプリ情報</h2>
                 <div className="text-sm sm:text-base text-gray-600 space-y-1">
-                    <p>バージョン: 1.0.0</p>
-                    <p>最終更新: 2024年1月</p>
-                    <p>開発者: GitHub Copilot</p>
+                    <p>バージョン: 0.0.1</p>
+                    <p>最終更新: 2025年6月</p>
                 </div>
             </div>
         </div>
