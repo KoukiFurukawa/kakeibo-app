@@ -35,20 +35,32 @@ export async function middleware(request: NextRequest) {
         data: { user },
     } = await supabase.auth.getUser()
 
+    // デバッグ用ログ（本番環境では削除してください）
+    console.log('Middleware - Path:', request.nextUrl.pathname)
+    console.log('Middleware - User:', user ? 'logged in' : 'not logged in')
+
     // Auth pages should redirect to dashboard if logged in
     if (user && (request.nextUrl.pathname === '/login' || request.nextUrl.pathname === '/signup')) {
         const url = request.nextUrl.clone()
         url.pathname = '/'
+        console.log('Redirecting authenticated user to dashboard')
         return NextResponse.redirect(url)
     }
 
     // Protected pages should redirect to login if not logged in
     const protectedPaths = ['/', '/todo', '/calendar', '/settings', '/input', '/fixed-costs']
-    const isProtectedPath = protectedPaths.some(path => request.nextUrl.pathname.startsWith(path))
+    const isProtectedPath = protectedPaths.some(path => {
+        // 完全一致または指定パスで始まる場合
+        return request.nextUrl.pathname === path || 
+            (path !== '/' && request.nextUrl.pathname.startsWith(path))
+    }) || request.nextUrl.pathname.startsWith('/(main)')
+
+    console.log('Middleware - Is protected path:', isProtectedPath)
 
     if (!user && isProtectedPath) {
         const url = request.nextUrl.clone()
         url.pathname = '/login'
+        console.log('Redirecting unauthenticated user to login')
         return NextResponse.redirect(url)
     }
 
@@ -65,13 +77,17 @@ export async function middleware(request: NextRequest) {
 
 export const config = {
     matcher: [
-        /*
-         * Match all request paths except for the ones starting with:
-         * - _next/static (static files)
-         * - _next/image (image optimization files)
-         * - favicon.ico (favicon file)
-         * Feel free to modify this pattern to include more paths.
-         */
-        '/((?!_next/static|_next/image|favicon.ico|.*\\.(?:svg|png|jpg|jpeg|gif|webp)$).*)',
+        // (main)グループ内の全てのルートを保護
+        '/(main)/:path*',
+        // 個別の保護されたパス
+        '/',
+        '/todo/:path*',
+        '/calendar/:path*',
+        '/settings/:path*',
+        '/input/:path*',
+        '/fixed-costs/:path*',
+        // 認証関連のページ
+        '/login',
+        '/signup'
     ],
 }
