@@ -1,48 +1,66 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
+import { useUser } from '@/contexts/UserContext';
 import Link from 'next/link';
 
 export default function NotificationsPage() {
-    const [settings, setSettings] = useState({
-        expenseReminder: true,
-        budgetAlert: true,
-        monthlyReport: false,
-        goalProgress: true
+    const { notificationSettings, updateNotificationSettings } = useUser();
+    const [localSettings, setLocalSettings] = useState({
+        todo: false,
+        event: false,
+        system: false
     });
+    const [hasChanges, setHasChanges] = useState(false);
 
-    const handleToggle = (key: keyof typeof settings) => {
-        setSettings(prev => ({
-            ...prev,
-            [key]: !prev[key]
-        }));
+    useEffect(() => {
+        if (notificationSettings) {
+            setLocalSettings(notificationSettings);
+        }
+    }, [notificationSettings]);
+
+    const handleToggle = (key: 'todo' | 'event' | 'system') => {
+        const newSettings = {
+            ...localSettings,
+            [key]: !localSettings[key]
+        };
+        setLocalSettings(newSettings);
+        
+        // Check if there are changes compared to original settings
+        const hasChanges = notificationSettings ? 
+            Object.keys(newSettings).some(k => newSettings[k as keyof typeof newSettings] !== notificationSettings[k as keyof typeof notificationSettings]) :
+            Object.values(newSettings).some(v => v);
+        setHasChanges(hasChanges);
+    };
+
+    const handleSave = async () => {
+        try {
+            await updateNotificationSettings(localSettings);
+            setHasChanges(false);
+        } catch (error) {
+            console.error('Failed to save notification settings:', error);
+        }
     };
 
     const notificationItems = [
         {
-            key: 'expenseReminder' as const,
-            title: '支出入力リマインダー',
-            description: '支出の入力を忘れたときに通知',
-            enabled: settings.expenseReminder
+            key: 'todo' as const,
+            title: 'ToDo通知',
+            description: '期限が近いToDoを通知',
+            enabled: localSettings?.todo
         },
         {
-            key: 'budgetAlert' as const,
-            title: '予算超過アラート',
-            description: '予算を超えそうなときに通知',
-            enabled: settings.budgetAlert
+            key: 'event' as const,
+            title: 'カレンダー通知',
+            description: '本日のカレンダー情報を通知',
+            enabled: localSettings?.event
         },
         {
-            key: 'monthlyReport' as const,
-            title: '月次レポート',
-            description: '月末に家計の振り返りレポートを送信',
-            enabled: settings.monthlyReport
+            key: 'system' as const,
+            title: 'システム通知',
+            description: 'アプリの重要なお知らせや更新情報',
+            enabled: localSettings?.system
         },
-        {
-            key: 'goalProgress' as const,
-            title: '目標達成進捗',
-            description: '貯金目標の達成状況を通知',
-            enabled: settings.goalProgress
-        }
     ];
 
     return (
@@ -83,6 +101,21 @@ export default function NotificationsPage() {
                         </div>
                     ))}
                 </div>
+            </div>
+
+            {/* Save Button */}
+            <div className="flex justify-end">
+                <button
+                    onClick={handleSave}
+                    disabled={!hasChanges}
+                    className={`px-6 py-2 rounded-md font-medium transition-colors ${
+                        hasChanges
+                            ? 'bg-blue-600 text-white hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2'
+                            : 'bg-gray-300 text-gray-500 cursor-not-allowed'
+                    }`}
+                >
+                    保存
+                </button>
             </div>
         </div>
     );

@@ -1,4 +1,28 @@
+"use client"
+
+import { useUser } from "@/contexts/UserContext";
+import { useEffect } from "react";
+
 export default function Home() {
+
+  const { userProfile, loading, refreshUserProfile, refreshNotificationSettings } = useUser();
+
+  useEffect(() => {
+    // ユーザープロフィールを初期化
+    if (userProfile) {
+      refreshUserProfile();
+      refreshNotificationSettings();
+    }
+  })
+
+  if (loading) {
+    return (
+      <div className="flex items-center justify-center h-screen">
+        <p className="text-gray-500">読み込み中...</p>
+      </div>
+    );
+  }
+
   return (
     <div className="space-y-4 sm:space-y-6">
       <h1 className="text-xl sm:text-2xl font-bold">家計簿ダッシュボード</h1>
