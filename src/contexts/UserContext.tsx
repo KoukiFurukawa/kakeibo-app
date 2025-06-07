@@ -22,15 +22,29 @@ interface UserNotificationSettings {
     created_at?: string;
 }
 
+interface UserFinance {
+    id: string;
+    created_at: string;
+    savings_goal: number;
+    food: number;
+    entertainment: number;
+    clothing: number;
+    daily_goods: number;
+    other: number;
+}
+
 interface UserContextType {
     authUser: User | null;
     userProfile: UserProfile | null;
     notificationSettings: UserNotificationSettings | null;
+    userFinance: UserFinance | null;
     loading: boolean;
     refreshUserProfile: () => Promise<void>;
     updateUserProfile: (updates: Partial<UserProfile>) => Promise<boolean>;
     refreshNotificationSettings: () => Promise<void>;
     updateNotificationSettings: (updates: Partial<UserNotificationSettings>) => Promise<boolean>;
+    refreshUserFinance: () => Promise<void>;
+    updateUserFinance: (updates: Partial<UserFinance>) => Promise<boolean>;
 }
 
 const UserContext = createContext<UserContextType | undefined>(undefined);
@@ -39,6 +53,7 @@ export function UserProvider({ children }: { children: ReactNode }) {
     const [authUser, setAuthUser] = useState<User | null>(null);
     const [userProfile, setUserProfile] = useState<UserProfile | null>(null);
     const [notificationSettings, setNotificationSettings] = useState<UserNotificationSettings | null>(null);
+    const [userFinance, setUserFinance] = useState<UserFinance | null>(null);
     const [loading, setLoading] = useState(true);
 
     // リトライ用のヘルパー関数
@@ -159,6 +174,52 @@ export function UserProvider({ children }: { children: ReactNode }) {
         setNotificationSettings(settings);
     };
 
+    // 家計設定を取得する関数
+    const fetchUserFinance = async (userId: string): Promise<UserFinance | null> => {
+        return retryWithBackoff(async () => {
+            const { data, error } = await supabase
+                .from('finance')
+                .select('*')
+                .eq('id', userId)
+                .single();
+
+            if (error) {
+                throw error;
+            }
+
+            return data;
+        });
+    };
+
+    // 家計設定を更新する関数
+    const updateUserFinance = async (updates: Partial<UserFinance>): Promise<boolean> => {
+        if (!authUser) return false;
+
+        try {
+            const { data, error } = await supabase
+                .from('finance')
+                .update(updates)
+                .eq('id', authUser.id)
+                .select()
+                .single();
+
+            if (error) throw error;
+
+            setUserFinance(data);
+            return true;
+        } catch (error) {
+            console.error('家計設定更新エラー:', error);
+            return false;
+        }
+    };
+
+    // 家計設定を再取得する関数
+    const refreshUserFinance = async () => {
+        if (!authUser) return;
+        const finance = await fetchUserFinance(authUser.id);
+        setUserFinance(finance);
+    };
+
     // 認証状態の監視とユーザープロフィールの取得
     useEffect(() => {
         const getInitialData = async () => {
@@ -172,6 +233,9 @@ export function UserProvider({ children }: { children: ReactNode }) {
                     
                     const settings = await fetchNotificationSettings(user.id);
                     setNotificationSettings(settings);
+                    
+                    const finance = await fetchUserFinance(user.id);
+                    setUserFinance(finance);
                 }
             } catch (error) {
                 console.error('初期データ取得エラー:', error);
@@ -193,9 +257,13 @@ export function UserProvider({ children }: { children: ReactNode }) {
                     
                     const settings = await fetchNotificationSettings(session.user.id);
                     setNotificationSettings(settings);
+                    
+                    const finance = await fetchUserFinance(session.user.id);
+                    setUserFinance(finance);
                 } else {
                     setUserProfile(null);
                     setNotificationSettings(null);
+                    setUserFinance(null);
                 }
                 setLoading(false);
             }
@@ -209,11 +277,14 @@ export function UserProvider({ children }: { children: ReactNode }) {
             authUser,
             userProfile,
             notificationSettings,
+            userFinance,
             loading,
             refreshUserProfile,
             updateUserProfile,
             refreshNotificationSettings,
-            updateNotificationSettings
+            updateNotificationSettings,
+            refreshUserFinance,
+            updateUserFinance
         }}>
             {children}
         </UserContext.Provider>
