@@ -1,4 +1,4 @@
-import { createClient } from '../../lib/supabase/server';
+import { createClient } from '@/lib/supabase/server';
 import type { User } from '@supabase/supabase-js';
 
 // サーバーサイドでセッションをチェックする関数
