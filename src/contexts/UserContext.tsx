@@ -23,8 +23,6 @@ interface UserNotificationSettings {
 }
 
 interface UserFinance {
-    id: string;
-    created_at: string;
     savings_goal: number;
     food: number;
     entertainment: number;
@@ -33,11 +31,22 @@ interface UserFinance {
     other: number;
 }
 
+interface FixedCost {
+    id: string;
+    created_by?: string;
+    title: string;
+    cost: number;
+    tag: string;
+    debit_date: number;
+    created_at?: string;
+}
+
 interface UserContextType {
-    authUser: User | null;
+    user: User | null;
     userProfile: UserProfile | null;
     notificationSettings: UserNotificationSettings | null;
     userFinance: UserFinance | null;
+    fixedCosts: FixedCost[];
     loading: boolean;
     refreshUserProfile: () => Promise<void>;
     updateUserProfile: (updates: Partial<UserProfile>) => Promise<boolean>;
@@ -45,15 +54,20 @@ interface UserContextType {
     updateNotificationSettings: (updates: Partial<UserNotificationSettings>) => Promise<boolean>;
     refreshUserFinance: () => Promise<void>;
     updateUserFinance: (updates: Partial<UserFinance>) => Promise<boolean>;
+    fetchFixedCosts: () => Promise<void>;
+    addFixedCost: (fixedCost: Omit<FixedCost, 'id' | 'created_by' | 'created_at'>) => Promise<FixedCost | null>;
+    updateFixedCost: (id: string, fixedCost: Partial<FixedCost>) => Promise<boolean>;
+    deleteFixedCost: (id: string) => Promise<boolean>;
 }
 
 const UserContext = createContext<UserContextType | undefined>(undefined);
 
 export function UserProvider({ children }: { children: ReactNode }) {
-    const [authUser, setAuthUser] = useState<User | null>(null);
+    const [user, setUser] = useState<User | null>(null);
     const [userProfile, setUserProfile] = useState<UserProfile | null>(null);
     const [notificationSettings, setNotificationSettings] = useState<UserNotificationSettings | null>(null);
     const [userFinance, setUserFinance] = useState<UserFinance | null>(null);
+    const [fixedCosts, setFixedCosts] = useState<FixedCost[]>([]);
     const [loading, setLoading] = useState(true);
 
     // リトライ用のヘルパー関数
@@ -98,7 +112,7 @@ export function UserProvider({ children }: { children: ReactNode }) {
 
     // ユーザープロフィールを更新する関数
     const updateUserProfile = async (updates: Partial<UserProfile>): Promise<boolean> => {
-        if (!authUser) return false;
+        if (!user) return false;
 
         try {
             const { data, error } = await supabase
@@ -107,7 +121,7 @@ export function UserProvider({ children }: { children: ReactNode }) {
                     ...updates,
                     updated_at: new Date().toISOString()
                 })
-                .eq('id', authUser.id)
+                .eq('id', user.id)
                 .select()
                 .single();
 
@@ -123,8 +137,8 @@ export function UserProvider({ children }: { children: ReactNode }) {
 
     // ユーザープロフィールを再取得する関数
     const refreshUserProfile = async () => {
-        if (!authUser) return;
-        const profile = await fetchUserProfile(authUser.id);
+        if (!user) return;
+        const profile = await fetchUserProfile(user.id);
         setUserProfile(profile);
     };
 
@@ -147,13 +161,13 @@ export function UserProvider({ children }: { children: ReactNode }) {
 
     // 通知設定を更新する関数
     const updateNotificationSettings = async (updates: Partial<UserNotificationSettings>): Promise<boolean> => {
-        if (!authUser) return false;
+        if (!user) return false;
 
         try {
             const { data, error } = await supabase
                 .from('notification_settings')
                 .update(updates)
-                .eq('id', authUser.id)
+                .eq('id', user.id)
                 .select()
                 .single();
 
@@ -169,8 +183,8 @@ export function UserProvider({ children }: { children: ReactNode }) {
 
     // 通知設定を再取得する関数
     const refreshNotificationSettings = async () => {
-        if (!authUser) return;
-        const settings = await fetchNotificationSettings(authUser.id);
+        if (!user) return;
+        const settings = await fetchNotificationSettings(user.id);
         setNotificationSettings(settings);
     };
 
@@ -193,13 +207,13 @@ export function UserProvider({ children }: { children: ReactNode }) {
 
     // 家計設定を更新する関数
     const updateUserFinance = async (updates: Partial<UserFinance>): Promise<boolean> => {
-        if (!authUser) return false;
+        if (!user) return false;
 
         try {
             const { data, error } = await supabase
                 .from('finance')
                 .update(updates)
-                .eq('id', authUser.id)
+                .eq('id', user.id)
                 .select()
                 .single();
 
@@ -215,9 +229,95 @@ export function UserProvider({ children }: { children: ReactNode }) {
 
     // 家計設定を再取得する関数
     const refreshUserFinance = async () => {
-        if (!authUser) return;
-        const finance = await fetchUserFinance(authUser.id);
+        if (!user) return;
+        const finance = await fetchUserFinance(user.id);
         setUserFinance(finance);
+    };
+
+    // 固定費を取得する関数
+    const fetchFixedCosts = async () => {
+        if (!user) return;
+
+        try {
+            const { data, error } = await supabase
+                .from('fixed_costs')
+                .select('*')
+                .eq('created_by', user.id)
+                .order('created_at', { ascending: false });
+
+            if (error) throw error;
+            setFixedCosts(data || []);
+        } catch (error) {
+            console.error('固定費取得エラー:', error);
+        }
+    };
+
+    // 固定費を追加する関数
+    const addFixedCost = async (fixedCostData: Omit<FixedCost, 'id' | 'created_by' | 'created_at'>): Promise<FixedCost | null> => {
+        if (!user) return null;
+
+        try {
+            const { data, error } = await supabase
+                .from('fixed_costs')
+                .insert({
+                    created_by: user.id,
+                    ...fixedCostData
+                })
+                .select()
+                .single();
+
+            if (error) throw error;
+
+            setFixedCosts(prev => [data, ...prev]);
+            return data;
+        } catch (error) {
+            console.error('固定費追加エラー:', error);
+            return null;
+        }
+    };
+
+    // 固定費を更新する関数
+    const updateFixedCost = async (id: string, fixedCostData: Partial<FixedCost>): Promise<boolean> => {
+        if (!user) return false;
+
+        try {
+            const { error } = await supabase
+                .from('fixed_costs')
+                .update(fixedCostData)
+                .eq('id', id)
+                .eq('created_by', user.id);
+
+            if (error) throw error;
+
+            setFixedCosts(prev => prev.map(cost =>
+                cost.id === id ? { ...cost, ...fixedCostData } : cost
+            ));
+            return true;
+        } catch (error) {
+            console.error('固定費更新エラー:', error);
+            return false;
+        }
+    };
+
+    // 固定費を削除する関数
+    const deleteFixedCost = async (id: string): Promise<boolean> => {
+        if (!user) return false;
+
+        try {
+            const { error } = await supabase
+                .from('fixed_costs')
+                .delete()
+                .eq('id', id)
+                .eq('created_by', user.id);
+
+            if (error) throw error;
+
+            setFixedCosts(prev => prev.filter(cost => cost.id !== id));
+            return true;
+        } catch (error) {
+            console.error('固定費削除エラー:', error);
+            return false;
+        }
     };
 
     // 認証状態の監視とユーザープロフィールの取得
@@ -225,7 +325,7 @@ export function UserProvider({ children }: { children: ReactNode }) {
         const getInitialData = async () => {
             try {
                 const { data: { user } } = await supabase.auth.getUser();
-                setAuthUser(user);
+                setUser(user);
 
                 if (user) {
                     const profile = await fetchUserProfile(user.id);
@@ -236,6 +336,8 @@ export function UserProvider({ children }: { children: ReactNode }) {
                     
                     const finance = await fetchUserFinance(user.id);
                     setUserFinance(finance);
+
+                    await fetchFixedCosts();
                 }
             } catch (error) {
                 console.error('初期データ取得エラー:', error);
@@ -249,7 +351,7 @@ export function UserProvider({ children }: { children: ReactNode }) {
         // 認証状態の変更を監視
         const { data: { subscription } } = supabase.auth.onAuthStateChange(
             async (event, session) => {
-                setAuthUser(session?.user ?? null);
+                setUser(session?.user ?? null);
 
                 if (session?.user) {
                     const profile = await fetchUserProfile(session.user.id);
@@ -260,6 +362,8 @@ export function UserProvider({ children }: { children: ReactNode }) {
                     
                     const finance = await fetchUserFinance(session.user.id);
                     setUserFinance(finance);
+
+                    await fetchFixedCosts();
                 } else {
                     setUserProfile(null);
                     setNotificationSettings(null);
@@ -272,20 +376,27 @@ export function UserProvider({ children }: { children: ReactNode }) {
         return () => subscription.unsubscribe();
     }, []);
 
+    const value: UserContextType = {
+        user,
+        userProfile,
+        notificationSettings,
+        userFinance,
+        fixedCosts,
+        loading,
+        refreshUserProfile,
+        updateUserProfile,
+        refreshNotificationSettings,
+        updateNotificationSettings,
+        refreshUserFinance,
+        updateUserFinance,
+        fetchFixedCosts,
+        addFixedCost,
+        updateFixedCost,
+        deleteFixedCost,
+    };
+
     return (
-        <UserContext.Provider value={{
-            authUser,
-            userProfile,
-            notificationSettings,
-            userFinance,
-            loading,
-            refreshUserProfile,
-            updateUserProfile,
-            refreshNotificationSettings,
-            updateNotificationSettings,
-            refreshUserFinance,
-            updateUserFinance
-        }}>
+        <UserContext.Provider value={value}>
             {children}
         </UserContext.Provider>
     );

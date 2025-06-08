@@ -6,7 +6,7 @@ import { useUser } from '@/contexts/UserContext';
 import Link from 'next/link';
 
 export default function ProfileSettingsPage() {
-    const { authUser, userProfile, loading: userLoading, updateUserProfile } = useUser();
+    const { user, userProfile, loading: userLoading, updateUserProfile } = useUser();
     const [userName, setUserName] = useState('');
     const [loading, setLoading] = useState(false);
     const [message, setMessage] = useState('');
@@ -20,7 +20,7 @@ export default function ProfileSettingsPage() {
     }, [userProfile]);
 
     const handleSave = async () => {
-        if (!authUser) {
+        if (!user) {
             setMessage('ログインが必要です');
             return;
         }
@@ -87,7 +87,7 @@ export default function ProfileSettingsPage() {
                     <div>
                         <label className="block text-sm font-medium text-gray-700 mb-2">メールアドレス</label>
                         <div className="p-3 bg-gray-50 rounded-md">
-                            <span className="text-sm text-gray-600">{authUser?.email || 'Loading...'}</span>
+                            <span className="text-sm text-gray-600">{user?.email || 'Loading...'}</span>
                         </div>
                     </div>
                     <div>

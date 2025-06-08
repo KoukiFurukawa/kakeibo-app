@@ -9,7 +9,7 @@ export default function Home() {
 
   useEffect(() => {
     // ユーザープロフィールを初期化
-    if (userProfile) {
+    if (!userProfile) {
       refreshUserProfile();
       refreshNotificationSettings();
     }
