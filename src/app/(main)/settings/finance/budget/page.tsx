@@ -3,9 +3,10 @@
 import { useState, useEffect } from 'react';
 import { useUser } from '@/contexts/UserContext';
 import Link from 'next/link';
+import LoadingWithReload from '@/components/LoadingWithReload';
 
 export default function BudgetSettingsPage() {
-    const { userFinance, loading: userLoading, updateUserFinance } = useUser();
+    const { userFinance, loading: userLoading, updateUserFinance, refreshAll } = useUser();
     const [savingGoal, setSavingGoal] = useState('');
     const [food, setFood] = useState('');
     const [entertainment, setEntertainment] = useState('');
@@ -73,7 +74,7 @@ export default function BudgetSettingsPage() {
 
     if (userLoading) {
         return (
-            <div className="pb-32"> {/* フッター + 保存ボタン分の余白 */}
+            <div className="pb-32">
                 <div className="space-y-6">
                     <div className="flex items-center space-x-4">
                         <Link href="/settings/finance" className="p-2 hover:bg-gray-100 rounded-md">
@@ -84,7 +85,10 @@ export default function BudgetSettingsPage() {
                         <h1 className="text-xl sm:text-2xl font-bold">予算設定</h1>
                     </div>
                     <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-8">
-                        <div className="text-center text-gray-500">読み込み中...</div>
+                        <LoadingWithReload 
+                            message="予算設定データを読み込み中..."
+                            onReload={refreshAll}
+                        />
                     </div>
                 </div>
             </div>

@@ -2,10 +2,10 @@
 
 import { useUser } from "@/contexts/UserContext";
 import { useEffect } from "react";
+import LoadingWithReload from "@/components/LoadingWithReload";
 
 export default function Home() {
-
-  const { userProfile, loading, refreshUserProfile, refreshNotificationSettings } = useUser();
+  const { userProfile, loading, refreshUserProfile, refreshNotificationSettings, refreshAll } = useUser();
 
   useEffect(() => {
     // ユーザープロフィールを初期化
@@ -13,12 +13,15 @@ export default function Home() {
       refreshUserProfile();
       refreshNotificationSettings();
     }
-  })
+  }, [userProfile, refreshUserProfile, refreshNotificationSettings]);
 
   if (loading) {
     return (
-      <div className="flex items-center justify-center h-screen">
-        <p className="text-gray-500">読み込み中...</p>
+      <div className="flex items-center justify-center min-h-[400px]">
+        <LoadingWithReload 
+          message="ダッシュボードデータを読み込み中..."
+          onReload={refreshAll}
+        />
       </div>
     );
   }

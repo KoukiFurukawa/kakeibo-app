@@ -4,9 +4,10 @@ import { useState, useEffect } from 'react';
 import { useHandleLogout } from '@/utils/manage_supabase';
 import { useUser } from '@/contexts/UserContext';
 import Link from 'next/link';
+import LoadingWithReload from '@/components/LoadingWithReload';
 
 export default function ProfileSettingsPage() {
-    const { user, userProfile, loading: userLoading, updateUserProfile } = useUser();
+    const { user, userProfile, loading: userLoading, updateUserProfile, refreshAll } = useUser();
     const [userName, setUserName] = useState('');
     const [loading, setLoading] = useState(false);
     const [message, setMessage] = useState('');
@@ -61,7 +62,10 @@ export default function ProfileSettingsPage() {
                     <h1 className="text-xl sm:text-2xl font-bold">プロフィール</h1>
                 </div>
                 <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-8">
-                    <div className="text-center text-gray-500">読み込み中...</div>
+                    <LoadingWithReload 
+                        message="プロフィールデータを読み込み中..."
+                        onReload={refreshAll}
+                    />
                 </div>
             </div>
         );

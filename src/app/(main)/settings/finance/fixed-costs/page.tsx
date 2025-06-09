@@ -3,9 +3,10 @@
 import { useState, useEffect } from 'react';
 import Link from 'next/link';
 import { useUser } from '@/contexts/UserContext';
+import LoadingWithReload from '@/components/LoadingWithReload';
 
 export default function FixedCostsPage() {
-    const { fixedCosts, addFixedCost, updateFixedCost, deleteFixedCost, fetchFixedCosts, loading } = useUser();
+    const { fixedCosts, addFixedCost, updateFixedCost, deleteFixedCost, fetchFixedCosts, loading, refreshAll } = useUser();
     const [name, setName] = useState('');
     const [amount, setAmount] = useState('');
     const [tag, setTag] = useState('');
@@ -170,7 +171,10 @@ export default function FixedCostsPage() {
                     <h1 className="text-xl sm:text-2xl font-bold">固定費設定</h1>
                 </div>
                 <div className="bg-white shadow-sm rounded-lg border border-gray-200 p-8">
-                    <div className="text-center text-gray-500">読み込み中...</div>
+                    <LoadingWithReload 
+                        message="固定費データを読み込み中..."
+                        onReload={refreshAll}
+                    />
                 </div>
             </div>
         );

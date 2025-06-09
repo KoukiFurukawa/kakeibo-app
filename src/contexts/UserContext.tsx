@@ -48,6 +48,7 @@ interface UserContextType {
     userFinance: UserFinance | null;
     fixedCosts: FixedCost[];
     loading: boolean;
+    refreshAll: () => Promise<void>;
     refreshUserProfile: () => Promise<void>;
     updateUserProfile: (updates: Partial<UserProfile>) => Promise<boolean>;
     refreshNotificationSettings: () => Promise<void>;
@@ -320,6 +321,25 @@ export function UserProvider({ children }: { children: ReactNode }) {
         }
     };
 
+    // 全データを再取得する関数
+    const refreshAll = async () => {
+        if (!user) return;
+        
+        setLoading(true);
+        try {
+            await Promise.all([
+                refreshUserProfile(),
+                refreshNotificationSettings(),
+                refreshUserFinance(),
+                fetchFixedCosts()
+            ]);
+        } catch (error) {
+            console.error('データ再取得エラー:', error);
+        } finally {
+            setLoading(false);
+        }
+    };
+
     // 認証状態の監視とユーザープロフィールの取得
     useEffect(() => {
         const getInitialData = async () => {
@@ -383,6 +403,7 @@ export function UserProvider({ children }: { children: ReactNode }) {
         userFinance,
         fixedCosts,
         loading,
+        refreshAll,
         refreshUserProfile,
         updateUserProfile,
         refreshNotificationSettings,
