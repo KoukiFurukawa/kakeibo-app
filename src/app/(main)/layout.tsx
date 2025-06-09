@@ -1,11 +1,23 @@
 import Navbar from "@/components/Navbar";
 import Footer from "@/components/Footer";
+import { getCurrentUserServer } from "@/utils/auth-server";
+import { UserProvider, useUser  } from "@/contexts/UserContext";
+import { redirect } from 'next/navigation';
 
-export default function MainLayout({
+export default async function MainLayout({
     children,
 }: {
     children: React.ReactNode;
 }) {
+    // サーバーサイドで認証チェック
+    const user = await getCurrentUserServer();
+    
+    // 認証されていない場合はログインページにリダイレクト
+    if (!user) {
+        redirect('/login');
+    }
+    
+    // 認証されている場合はメインレイアウトを表示
     return (
         <>
             <Navbar />

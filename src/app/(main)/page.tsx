@@ -1,4 +1,31 @@
+"use client"
+
+import { useUser } from "@/contexts/UserContext";
+import { useEffect } from "react";
+import LoadingWithReload from "@/components/LoadingWithReload";
+
 export default function Home() {
+  const { userProfile, loading, refreshUserProfile, refreshNotificationSettings, refreshAll } = useUser();
+
+  useEffect(() => {
+    // ユーザープロフィールを初期化
+    if (!userProfile) {
+      refreshUserProfile();
+      refreshNotificationSettings();
+    }
+  }, [userProfile, refreshUserProfile, refreshNotificationSettings]);
+
+  if (loading) {
+    return (
+      <div className="flex items-center justify-center min-h-[400px]">
+        <LoadingWithReload 
+          message="ダッシュボードデータを読み込み中..."
+          onReload={refreshAll}
+        />
+      </div>
+    );
+  }
+
   return (
     <div className="space-y-4 sm:space-y-6">
       <h1 className="text-xl sm:text-2xl font-bold">家計簿ダッシュボード</h1>

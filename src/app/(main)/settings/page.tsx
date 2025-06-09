@@ -1,174 +1,91 @@
 'use client';
 
-import { useState } from 'react';
-import { useHandleLogout } from '@/utils/manage_supabase';
+import Link from 'next/link';
+
+const settingsCategories = [
+    {
+        title: 'プロフィール',
+        description: 'ユーザー情報・アカウント設定',
+        href: '/settings/profile',
+        icon: (
+            <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" />
+            </svg>
+        ),
+        bgColor: 'bg-blue-500'
+    },
+    {
+        title: '通知',
+        description: '通知の設定・管理',
+        href: '/settings/notifications',
+        icon: (
+            <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 17h5l-1.405-1.405A2.032 2.032 0 0118 14.158V11a6.002 6.002 0 00-4-5.659V5a2 2 0 10-4 0v.341C7.67 6.165 6 8.388 6 11v3.159c0 .538-.214 1.055-.595 1.436L4 17h5m6 0v1a3 3 0 11-6 0v-1m6 0H9" />
+            </svg>
+        ),
+        bgColor: 'bg-red-500'
+    },
+    {
+        title: '家計管理',
+        description: '貯金目標・固定費設定',
+        href: '/settings/finance',
+        icon: (
+            <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1" />
+            </svg>
+        ),
+        bgColor: 'bg-green-500'
+    },
+    {
+        title: 'グループ',
+        description: 'グループ作成・参加・管理',
+        href: '/settings/group',
+        icon: (
+            <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0zm6 3a2 2 0 11-4 0 2 2 0 014 0zM7 10a2 2 0 11-4 0 2 2 0 014 0z" />
+            </svg>
+        ),
+        bgColor: 'bg-purple-500'
+    },
+    {
+        title: 'アプリ情報',
+        description: 'バージョン・利用規約・お問い合わせ',
+        href: '/settings/about',
+        icon: (
+            <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+            </svg>
+        ),
+        bgColor: 'bg-gray-500'
+    }
+];
 
 export default function SettingsPage() {
-    const [settings, setSettings] = useState({
-        username: '',
-        currency: 'JPY',
-        language: 'ja',
-        notifications: {
-            income: true,
-            expense: true,
-            todo: true,
-            monthlyReport: true,
-        },
-        theme: 'light',
-        budgetLimit: '',
-        autoBackup: true,
-    });
-
-    const handleInputChange = (field: string, value: string | boolean) => {
-        setSettings(prev => ({
-            ...prev,
-            [field]: value
-        }));
-    };
-
-    const handleNotificationChange = (field: string, value: boolean) => {
-        setSettings(prev => ({
-            ...prev,
-            notifications: {
-                ...prev.notifications,
-                [field]: value
-            }
-        }));
-    };
-
-    const handleLogout = useHandleLogout();
-
     return (
-        <div className="space-y-4 sm:space-y-6">
-
-            {/* 基本設定 */}
-            <div className="bg-white shadow-md rounded-lg p-4 sm:p-6">
-                <h2 className="text-lg sm:text-xl font-semibold mb-4">基本設定</h2>
-                
-                <div className="space-y-4">
-                    <div>
-                        <label className="block text-sm font-medium text-gray-700 mb-2">ユーザー名</label>
-                        <input
-                            type="text"
-                            value={settings.username}
-                            onChange={(e) => handleInputChange('username', e.target.value)}
-                            className="w-full p-2 border border-gray-300 rounded-md text-sm sm:text-base"
-                            placeholder="ユーザー名を入力"
-                        />
-                    </div>
-
-                    <div>
-                        <label className="block text-sm font-medium text-gray-700 mb-2">通貨</label>
-                        <select
-                            value={settings.currency}
-                            onChange={(e) => handleInputChange('currency', e.target.value)}
-                            className="w-full p-2 border border-gray-300 rounded-md text-sm sm:text-base"
-                        >
-                            <option value="JPY">日本円 (¥)</option>
-                            <option value="USD">米ドル ($)</option>
-                            <option value="EUR">ユーロ (€)</option>
-                        </select>
-                    </div>
-
-                    <div>
-                        <label className="block text-sm font-medium text-gray-700 mb-2">言語</label>
-                        <select
-                            value={settings.language}
-                            onChange={(e) => handleInputChange('language', e.target.value)}
-                            className="w-full p-2 border border-gray-300 rounded-md text-sm sm:text-base"
-                        >
-                            <option value="ja">日本語</option>
-                            <option value="en">English</option>
-                        </select>
-                    </div>
-
-                    <div>
-                        <label className="block text-sm font-medium text-gray-700 mb-2">月予算上限</label>
-                        <div className="relative">
-                            <span className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
-                                ¥
-                            </span>
-                            <input
-                                type="number"
-                                value={settings.budgetLimit}
-                                onChange={(e) => handleInputChange('budgetLimit', e.target.value)}
-                                className="w-full pl-8 p-2 border border-gray-300 rounded-md text-sm sm:text-base"
-                                placeholder="0"
-                                min="0"
-                            />
-                        </div>
-                    </div>
-                </div>
-            </div>
-
-            {/* 通知設定 */}
-            <div className="bg-white shadow-md rounded-lg p-4 sm:p-6">
-                <h2 className="text-lg sm:text-xl font-semibold mb-4">通知設定</h2>
-                
-                <div className="space-y-3">
-                    <div className="flex items-center justify-between">
-                        <span className="text-sm sm:text-base">収入記録時の通知</span>
-                        <input
-                            type="checkbox"
-                            checked={settings.notifications.income}
-                            onChange={(e) => handleNotificationChange('income', e.target.checked)}
-                            className="h-4 w-4"
-                        />
-                    </div>
-
-                    <div className="flex items-center justify-between">
-                        <span className="text-sm sm:text-base">支出記録時の通知</span>
-                        <input
-                            type="checkbox"
-                            checked={settings.notifications.expense}
-                            onChange={(e) => handleNotificationChange('expense', e.target.checked)}
-                            className="h-4 w-4"
-                        />
-                    </div>
-
-                    <div className="flex items-center justify-between">
-                        <span className="text-sm sm:text-base">ToDo期限の通知</span>
-                        <input
-                            type="checkbox"
-                            checked={settings.notifications.todo}
-                            onChange={(e) => handleNotificationChange('todo', e.target.checked)}
-                            className="h-4 w-4"
-                        />
-                    </div>
-
-                    <div className="flex items-center justify-between">
-                        <span className="text-sm sm:text-base">月次レポートの通知</span>
-                        <input
-                            type="checkbox"
-                            checked={settings.notifications.monthlyReport}
-                            onChange={(e) => handleNotificationChange('monthlyReport', e.target.checked)}
-                            className="h-4 w-4"
-                        />
-                    </div>
-                </div>
-            </div>
-
-            {/* アカウント管理 */}
-            <div className="bg-white shadow-md rounded-lg p-4 sm:p-6">
-                <h2 className="text-lg sm:text-xl font-semibold mb-4">アカウント管理</h2>
-                
-                <div className="space-y-3">
-                    <button
-                        onClick={handleLogout}
-                        className="w-full bg-purple-500 text-white py-2 px-4 rounded-md hover:bg-purple-600 text-sm sm:text-base"
+        <div className="space-y-6">
+            <div className="space-y-4 mt-3">
+                {settingsCategories.map((category) => (
+                    <Link
+                        key={category.href}
+                        href={category.href}
+                        className="block bg-white rounded-lg shadow-sm border border-gray-200 hover:shadow-md transition-shadow"
                     >
-                        ログアウト
-                    </button>
-                </div>
-            </div>
-
-            {/* アプリ情報 */}
-            <div className="bg-white shadow-md rounded-lg p-4 sm:p-6">
-                <h2 className="text-lg sm:text-xl font-semibold mb-4">アプリ情報</h2>
-                <div className="text-sm sm:text-base text-gray-600 space-y-1">
-                    <p>バージョン: 0.0.1</p>
-                    <p>最終更新: 2025年6月</p>
-                </div>
+                        <div className="p-4 flex items-center space-x-4">
+                            <div className={`p-2 rounded-lg ${category.bgColor} text-white flex-shrink-0`}>
+                                {category.icon}
+                            </div>
+                            <div className="flex-1 min-w-0">
+                                <h3 className="text-base font-medium text-gray-900">{category.title}</h3>
+                                <p className="text-sm text-gray-500 mt-1">{category.description}</p>
+                            </div>
+                            <div className="flex-shrink-0">
+                                <svg className="w-5 h-5 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
+                                </svg>
+                            </div>
+                        </div>
+                    </Link>
+                ))}
             </div>
         </div>
     );
