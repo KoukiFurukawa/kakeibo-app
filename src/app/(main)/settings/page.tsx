@@ -63,9 +63,7 @@ const settingsCategories = [
 export default function SettingsPage() {
     return (
         <div className="space-y-6">
-            <h1 className="text-xl sm:text-2xl font-bold">設定</h1>
-            
-            <div className="space-y-4">
+            <div className="space-y-4 mt-3">
                 {settingsCategories.map((category) => (
                     <Link
                         key={category.href}

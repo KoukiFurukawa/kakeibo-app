@@ -23,10 +23,37 @@ const Navbar = () => {
         { id: 2, title: '新機能追加のお知らせ', date: '2024-01-10', content: 'カレンダー機能が追加されました。' },
     ];
 
-    // 現在のページ名を取得する関数
+    // 現在のページ名を取得する関数（サブパスにも対応）
     const getCurrentPageName = () => {
-        const currentItem = navItems.find(item => item.path === pathname);
-        return currentItem ? currentItem.name : 'ホーム';
+        // 設定系のサブページ用の詳細なマッピング
+        const detailedMapping: { [key: string]: string } = {
+            '/settings': '設定',
+            '/settings/profile': '設定',
+            '/settings/notifications': '設定',
+            '/settings/group': '設定',
+            '/settings/finance': '設定',
+            '/settings/finance/budget': '設定',
+            '/settings/finance/fixed-costs': '設定',
+            '/todo': 'ToDo',
+            '/calendar': 'カレンダー',
+            '/': 'ホーム'
+        };
+
+        // 完全一致を最初にチェック
+        if (detailedMapping[pathname]) {
+            return detailedMapping[pathname];
+        }
+
+        // 部分一致でチェック（長いパスから順番に）
+        const sortedPaths = Object.keys(detailedMapping).sort((a, b) => b.length - a.length);
+        for (const path of sortedPaths) {
+            if (path !== '/' && pathname.startsWith(path)) {
+                return detailedMapping[path];
+            }
+        }
+
+        // デフォルトはホーム
+        return 'ホーム';
     };
 
     const handleLogout = useHandleLogout();
@@ -70,7 +97,8 @@ const Navbar = () => {
                                         href={item.path}
                                         key={item.path}
                                         className={`px-4 py-2 mx-1 rounded-md ${
-                                            pathname === item.path 
+                                            // アクティブ判定も修正
+                                            (item.path === '/' ? pathname === '/' : pathname.startsWith(item.path))
                                                 ? 'bg-blue-500 text-white' 
                                                 : 'hover:bg-gray-100'
                                         }`}
