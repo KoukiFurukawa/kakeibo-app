@@ -1,12 +1,202 @@
 "use client"
 
 import { useUser } from "@/contexts/UserContext";
-import { useEffect, useState } from "react";
+import { useEffect, useState, useMemo } from "react";
 import LoadingWithReload from "@/components/LoadingWithReload";
+
+// 円グラフコンポーネント
+function PieChart({ data }: { data: Array<{ label: string; value: number; color: string }> }) {
+  const total = data.reduce((sum, item) => sum + item.value, 0);
+  
+  if (total === 0) {
+    return (
+      <div className="h-48 sm:h-64 flex items-center justify-center bg-gray-100 rounded">
+        <p className="text-gray-500 text-sm">支出データがありません</p>
+      </div>
+    );
+  }
+
+  const strokeWidth = 12;
+  
+  // モバイルとデスクトップの設定を統一
+  const mobileConfig = { cx: 80, cy: 80, r: 60, size: 160 };
+  const desktopConfig = { cx: 80, cy: 80, r: 60, size: 200 };
+
+  let accumulatedAngle = 0;
+
+  const createPath = (startAngle: number, endAngle: number, centerX: number, centerY: number, radius: number) => {
+    const start = polarToCartesian(centerX, centerY, radius, endAngle);
+    const end = polarToCartesian(centerX, centerY, radius, startAngle);
+    const largeArcFlag = endAngle - startAngle <= 180 ? "0" : "1";
+    
+    return [
+      "M", start.x, start.y, 
+      "A", radius, radius, 0, largeArcFlag, 0, end.x, end.y
+    ].join(" ");
+  };
+
+  const polarToCartesian = (centerX: number, centerY: number, radius: number, angleInDegrees: number) => {
+    const angleInRadians = (angleInDegrees - 90) * Math.PI / 180.0;
+    return {
+      x: centerX + (radius * Math.cos(angleInRadians)),
+      y: centerY + (radius * Math.sin(angleInRadians))
+    };
+  };
+
+  return (
+    <div className="h-48 sm:h-64 flex flex-row sm:flex-col items-center justify-center gap-4 sm:gap-2">
+      {/* グラフ部分 */}
+      <div className="flex-shrink-0">
+        <svg width={mobileConfig.size} height={mobileConfig.size} className="sm:w-[200px] sm:h-[200px]">
+          {/* 背景円 */}
+          <circle
+            cx={mobileConfig.cx}
+            cy={mobileConfig.cy}
+            r={mobileConfig.r}
+            fill="none"
+            stroke="#f3f4f6"
+            strokeWidth={strokeWidth}
+            className="sm:cx-[100] sm:cy-[100] sm:r-[75]"
+          />
+          
+          {data.map((item, index) => {
+            const percentage = (item.value / total) * 100;
+            const angle = (item.value / total) * 360;
+            const startAngle = accumulatedAngle;
+            const endAngle = accumulatedAngle + angle;
+            
+            // モバイル用のパス（デフォルト）
+            const pathData = createPath(startAngle, endAngle, mobileConfig.cx, mobileConfig.cy, mobileConfig.r);
+            accumulatedAngle += angle;
+
+            return (
+              <path
+                key={index}
+                d={pathData}
+                fill="none"
+                stroke={item.color}
+                strokeWidth={strokeWidth}
+                strokeLinecap="round"
+                className="sm:hidden"
+              />
+            );
+          })}
+          
+          {/* デスクトップ用のパス（レスポンシブ対応） */}
+          {data.map((item, index) => {
+            const percentage = (item.value / total) * 100;
+            const angle = (item.value / total) * 360;
+            const startAngle = data.slice(0, index).reduce((sum, prev) => sum + (prev.value / total) * 360, 0);
+            const endAngle = startAngle + angle;
+            
+            const pathData = createPath(startAngle, endAngle, desktopConfig.cx, desktopConfig.cy, desktopConfig.r);
+
+            return (
+              <path
+                key={`desktop-${index}`}
+                d={pathData}
+                fill="none"
+                stroke={item.color}
+                strokeWidth={strokeWidth}
+                strokeLinecap="round"
+                className="hidden sm:block"
+              />
+            );
+          })}
+          
+          {/* 中央のテキスト */}
+          <text x={mobileConfig.cx} y={mobileConfig.cy - 4} textAnchor="middle" className="text-xs sm:text-sm font-medium fill-gray-700 sm:x-[100] sm:y-[94]">
+            総支出
+          </text>
+          <text x={mobileConfig.cx} y={mobileConfig.cy + 8} textAnchor="middle" className="text-xs fill-gray-600 sm:x-[100] sm:y-[108]">
+            ¥{total.toLocaleString()}
+          </text>
+        </svg>
+      </div>
+      
+      {/* 凡例部分 */}
+      <div className="flex-1 min-w-0 max-w-full sm:max-w-none">
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-1 text-xs">
+          {data.slice(0, 6).map((item, index) => (
+            <div key={index} className="flex items-center min-w-0">
+              <div 
+                className="w-3 h-3 rounded-full mr-2 flex-shrink-0" 
+                style={{ backgroundColor: item.color }}
+              ></div>
+              <span className="truncate">
+                {item.label}: ¥{item.value.toLocaleString()} ({((item.value / total) * 100).toFixed(1)}%)
+              </span>
+            </div>
+          ))}
+          {data.length > 6 && (
+            <div className="text-xs text-gray-500 sm:col-span-2 mt-1">
+              他 {data.length - 6} 項目
+            </div>
+          )}
+        </div>
+      </div>
+    </div>
+  );
+}
+
+// 予算使用率グラフコンポーネント
+function BudgetProgressChart({ used, budget, label, isSavings = false }: { 
+  used: number; 
+  budget: number; 
+  label: string;
+  isSavings?: boolean;
+}) {
+  const percentage = budget > 0 ? Math.min((used / budget) * 100, 100) : 0;
+  const remaining = Math.max(budget - used, 0);
+  
+  const getColor = () => {
+    if (isSavings) {
+      // 貯金の場合は達成度に応じて色を変える
+      if (percentage >= 100) return 'bg-green-500';
+      if (percentage >= 80) return 'bg-blue-500';
+      return 'bg-gray-400';
+    } else {
+      // 支出の場合は予算オーバーを警告
+      if (percentage >= 100) return 'bg-red-500';
+      if (percentage >= 80) return 'bg-yellow-500';
+      return 'bg-green-500';
+    }
+  };
+
+  const getStatusText = () => {
+    if (isSavings) {
+      return percentage >= 100 ? '目標達成！' : `目標まで ¥${remaining.toLocaleString()}`;
+    } else {
+      return percentage >= 100 ? '予算オーバー' : `残り ¥${remaining.toLocaleString()}`;
+    }
+  };
+
+  return (
+    <div className="space-y-2">
+      <div className="flex justify-between text-sm">
+        <span className="font-medium">{label}</span>
+        <span className="text-gray-600">{percentage.toFixed(1)}%</span>
+      </div>
+      <div className="w-full bg-gray-200 rounded-full h-3">
+        <div 
+          className={`h-3 rounded-full transition-all duration-300 ${getColor()}`}
+          style={{ width: `${Math.min(percentage, 100)}%` }}
+        ></div>
+      </div>
+      <div className="flex justify-between text-xs text-gray-600">
+        <span>
+          {isSavings ? '貯金' : '支出'}: ¥{used.toLocaleString()}
+        </span>
+        <span>{getStatusText()}</span>
+      </div>
+    </div>
+  );
+}
 
 export default function Home() {
   const { 
     userProfile, 
+    userFinance,
     transactions, 
     loading, 
     refreshAll, 
@@ -25,18 +215,77 @@ export default function Home() {
   const [saving, setSaving] = useState(false);
   const [message, setMessage] = useState('');
 
+  // 新しいstate
+  const [activeTab, setActiveTab] = useState<'expense' | 'income'>('expense');
+  const [selectedTag, setSelectedTag] = useState<string>('all');
+
   const tags = [
     '食費', '日用品', '交通費', '娯楽', '衣服', '医療', '住居', '水道光熱費', '通信費', '教育', '給料', 'その他'
   ];
 
-  // 現在の月の統計を取得（transactionsが空の場合は初期値を返す）
+  // 現在の月の統計を取得
   const currentDate = new Date();
   const monthlyStats = transactions.length > 0 
     ? getMonthlyStats(currentDate.getFullYear(), currentDate.getMonth() + 1)
     : { income: 0, expense: 0, balance: 0 };
 
-  // 最近の取引（最大5件）
-  const recentTransactions = transactions.slice(0, 5);
+  // 今月の取引データを取得
+  const currentMonthTransactions = useMemo(() => {
+    const startDate = new Date(currentDate.getFullYear(), currentDate.getMonth(), 1);
+    const endDate = new Date(currentDate.getFullYear(), currentDate.getMonth() + 1, 0, 23, 59, 59);
+
+    return transactions.filter(transaction => {
+      const transactionDate = new Date(transaction.created_at);
+      return transactionDate >= startDate && transactionDate <= endDate;
+    });
+  }, [transactions, currentDate]);
+
+  // 支出タグごとの集計データ
+  const expenseByTag = useMemo(() => {
+    const expenseTransactions = currentMonthTransactions.filter(t => !t.is_income);
+    const tagTotals: { [key: string]: number } = {};
+
+    expenseTransactions.forEach(transaction => {
+      tagTotals[transaction.tag] = (tagTotals[transaction.tag] || 0) + transaction.amount;
+    });
+
+    const colors = [
+      '#3b82f6', '#ef4444', '#10b981', '#f59e0b', '#8b5cf6',
+      '#06b6d4', '#84cc16', '#f97316', '#ec4899', '#6b7280',
+      '#14b8a6', '#f97316', '#a855f7', '#22c55e'
+    ];
+
+    return Object.entries(tagTotals)
+      .map(([tag, amount], index) => ({
+        label: tag,
+        value: amount,
+        color: colors[index % colors.length]
+      }))
+      .sort((a, b) => b.value - a.value);
+  }, [currentMonthTransactions]);
+
+  // タグフィルタリングされた取引
+  const filteredTransactions = useMemo(() => {
+    let filtered = currentMonthTransactions.filter(t => 
+      activeTab === 'expense' ? !t.is_income : t.is_income
+    );
+
+    if (selectedTag !== 'all') {
+      filtered = filtered.filter(t => t.tag === selectedTag);
+    }
+
+    return filtered.sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime());
+  }, [currentMonthTransactions, activeTab, selectedTag]);
+
+  // 使用可能なタグ一覧
+  const availableTags = useMemo(() => {
+    const tagsInTransactions = Array.from(new Set(
+      currentMonthTransactions
+        .filter(t => activeTab === 'expense' ? !t.is_income : t.is_income)
+        .map(t => t.tag)
+    ));
+    return tagsInTransactions.sort();
+  }, [currentMonthTransactions, activeTab]);
 
   const handleInputSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -146,7 +395,6 @@ export default function Home() {
               </p>
             </div>
           </div>
-          {/* デバッグ用：データが読み込まれているかを表示 */}
           <div className="mt-2 text-xs text-gray-400">
             取引件数: {transactions.length}件
           </div>
@@ -154,14 +402,97 @@ export default function Home() {
         
         <div className="bg-white p-4 sm:p-6 rounded-lg shadow-md">
           <h2 className="text-lg sm:text-xl font-semibold mb-3 sm:mb-4">支出の内訳</h2>
-          <div className="h-48 sm:h-64 flex items-center justify-center bg-gray-100 rounded">
-            <p className="text-gray-500 text-sm">ここに円グラフが表示されます</p>
-          </div>
+          <PieChart data={expenseByTag} />
         </div>
       </div>
+
+      {/* 予算使用率セクション */}
+      {userFinance && (
+        <div className="bg-white p-4 sm:p-6 rounded-lg shadow-md">
+          <h2 className="text-lg sm:text-xl font-semibold mb-4">予算・目標の進捗</h2>
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+            <BudgetProgressChart 
+              used={expenseByTag.find(item => item.label === '食費')?.value || 0}
+              budget={userFinance.food}
+              label="食費"
+            />
+            <BudgetProgressChart 
+              used={expenseByTag.find(item => item.label === '娯楽')?.value || 0}
+              budget={userFinance.entertainment}
+              label="娯楽"
+            />
+            <BudgetProgressChart 
+              used={expenseByTag.find(item => item.label === '衣服')?.value || 0}
+              budget={userFinance.clothing}
+              label="衣服"
+            />
+            <BudgetProgressChart 
+              used={expenseByTag.find(item => item.label === '日用品')?.value || 0}
+              budget={userFinance.daily_goods}
+              label="日用品"
+            />
+            <BudgetProgressChart 
+              used={expenseByTag.filter(item => !['食費', '娯楽', '衣服', '日用品'].includes(item.label)).reduce((sum, item) => sum + item.value, 0)}
+              budget={userFinance.other}
+              label="その他"
+            />
+            <BudgetProgressChart 
+              used={Math.max(monthlyStats.balance, 0)}
+              budget={userFinance.savings_goal}
+              label="貯金目標"
+              isSavings={true}
+            />
+          </div>
+        </div>
+      )}
       
       <div className="bg-white p-4 sm:p-6 rounded-lg shadow-md">
-        <h2 className="text-lg sm:text-xl font-semibold mb-3 sm:mb-4">最近の取引</h2>
+        <div className="flex justify-between items-center mb-4">
+          <h2 className="text-lg sm:text-xl font-semibold">今月の取引</h2>
+          
+          {/* タブ切り替え */}
+          <div className="flex gap-2">
+            <button
+              onClick={() => {
+                setActiveTab('expense');
+                setSelectedTag('all');
+              }}
+              className={`px-3 py-1 rounded text-sm ${
+                activeTab === 'expense' ? 'bg-red-500 text-white' : 'bg-gray-200'
+              }`}
+            >
+              支出
+            </button>
+            <button
+              onClick={() => {
+                setActiveTab('income');
+                setSelectedTag('all');
+              }}
+              className={`px-3 py-1 rounded text-sm ${
+                activeTab === 'income' ? 'bg-green-500 text-white' : 'bg-gray-200'
+              }`}
+            >
+              収入
+            </button>
+          </div>
+        </div>
+
+        {/* タグフィルター */}
+        {availableTags.length > 0 && (
+          <div className="mb-4">
+            <select
+              value={selectedTag}
+              onChange={(e) => setSelectedTag(e.target.value)}
+              className="px-3 py-2 border border-gray-300 rounded-md text-sm"
+            >
+              <option value="all">すべてのタグ</option>
+              {availableTags.map(tag => (
+                <option key={tag} value={tag}>{tag}</option>
+              ))}
+            </select>
+          </div>
+        )}
+
         <div className="overflow-x-auto -mx-4 sm:mx-0">
           <table className="min-w-full divide-y divide-gray-200">
             <thead>
@@ -173,20 +504,23 @@ export default function Home() {
               </tr>
             </thead>
             <tbody className="bg-white divide-y divide-gray-200">
-              {recentTransactions.length === 0 ? (
+              {filteredTransactions.length === 0 ? (
                 <tr>
                   <td className="px-3 py-4 sm:px-6 sm:py-4 whitespace-nowrap text-xs sm:text-sm text-gray-500" colSpan={4}>
-                    {loading ? '読み込み中...' : '取引データがありません'}
+                    {loading ? '読み込み中...' : `${activeTab === 'expense' ? '支出' : '収入'}データがありません`}
                   </td>
                 </tr>
               ) : (
-                recentTransactions.map((transaction) => (
+                filteredTransactions.map((transaction) => (
                   <tr key={transaction.id}>
                     <td className="px-3 py-2 sm:px-6 sm:py-4 whitespace-nowrap text-xs sm:text-sm text-gray-500">
                       {new Date(transaction.created_at).toLocaleDateString('ja-JP')}
                     </td>
                     <td className="px-3 py-2 sm:px-6 sm:py-4 whitespace-nowrap text-xs sm:text-sm text-gray-900">
                       {transaction.title}
+                      {transaction.description && (
+                        <div className="text-xs text-gray-500 mt-1">{transaction.description}</div>
+                      )}
                     </td>
                     <td className="px-3 py-2 sm:px-6 sm:py-4 whitespace-nowrap">
                       <span className="px-2 py-1 text-xs rounded-full bg-blue-100 text-blue-800">
@@ -204,6 +538,12 @@ export default function Home() {
             </tbody>
           </table>
         </div>
+
+        {filteredTransactions.length > 0 && (
+          <div className="mt-4 text-sm text-gray-500 text-center">
+            {filteredTransactions.length}件の取引を表示
+          </div>
+        )}
       </div>
 
       {/* 浮動追加ボタン */}
