@@ -41,12 +41,24 @@ interface FixedCost {
     created_at?: string;
 }
 
+interface UserTransaction {
+    id: string;
+    created_by: string;
+    title: string;
+    description: string;
+    amount: number;
+    tag: string;
+    is_income: boolean;
+    created_at: string;
+}
+
 interface UserContextType {
     user: User | null;
     userProfile: UserProfile | null;
     notificationSettings: UserNotificationSettings | null;
     userFinance: UserFinance | null;
     fixedCosts: FixedCost[];
+    transactions: UserTransaction[];
     loading: boolean;
     refreshAll: () => Promise<void>;
     refreshUserProfile: () => Promise<void>;
@@ -59,6 +71,11 @@ interface UserContextType {
     addFixedCost: (fixedCost: Omit<FixedCost, 'id' | 'created_by' | 'created_at'>) => Promise<FixedCost | null>;
     updateFixedCost: (id: string, fixedCost: Partial<FixedCost>) => Promise<boolean>;
     deleteFixedCost: (id: string) => Promise<boolean>;
+    fetchTransactions: () => Promise<void>;
+    addTransaction: (transaction: Omit<UserTransaction, 'id' | 'created_by' | 'created_at'>) => Promise<UserTransaction | null>;
+    updateTransaction: (id: string, transaction: Partial<UserTransaction>) => Promise<boolean>;
+    deleteTransaction: (id: string) => Promise<boolean>;
+    getMonthlyStats: (year: number, month: number) => { income: number; expense: number; balance: number };
 }
 
 const UserContext = createContext<UserContextType | undefined>(undefined);
@@ -69,6 +86,7 @@ export function UserProvider({ children }: { children: ReactNode }) {
     const [notificationSettings, setNotificationSettings] = useState<UserNotificationSettings | null>(null);
     const [userFinance, setUserFinance] = useState<UserFinance | null>(null);
     const [fixedCosts, setFixedCosts] = useState<FixedCost[]>([]);
+    const [transactions, setTransactions] = useState<UserTransaction[]>([]);
     const [loading, setLoading] = useState(true);
 
     // リトライ用のヘルパー関数
@@ -321,6 +339,117 @@ export function UserProvider({ children }: { children: ReactNode }) {
         }
     };
 
+    // 取引を取得する関数
+    const fetchTransactions = async () => {
+        if (!user) return;
+
+        try {
+            const { data, error } = await supabase
+                .from('transactions')
+                .select('*')
+                .eq('created_by', user.id)
+                .order('created_at', { ascending: false });
+
+            if (error) throw error;
+            setTransactions(data || []);
+        } catch (error) {
+            console.error('取引取得エラー:', error);
+        }
+    };
+
+    // 取引を追加する関数
+    const addTransaction = async (transactionData: Omit<UserTransaction, 'id' | 'created_by' | 'created_at'>): Promise<UserTransaction | null> => {
+        if (!user) return null;
+
+        try {
+            const { data, error } = await supabase
+                .from('transactions')
+                .insert({
+                    created_by: user.id,
+                    ...transactionData
+                })
+                .select()
+                .single();
+
+            if (error) throw error;
+
+            setTransactions(prev => [data, ...prev]);
+            return data;
+        } catch (error) {
+            console.error('取引追加エラー:', error);
+            return null;
+        }
+    };
+
+    // 取引を更新する関数
+    const updateTransaction = async (id: string, transactionData: Partial<UserTransaction>): Promise<boolean> => {
+        if (!user) return false;
+
+        try {
+            const { error } = await supabase
+                .from('transactions')
+                .update(transactionData)
+                .eq('id', id)
+                .eq('created_by', user.id);
+
+            if (error) throw error;
+
+            setTransactions(prev => prev.map(transaction =>
+                transaction.id === id ? { ...transaction, ...transactionData } : transaction
+            ));
+            return true;
+        } catch (error) {
+            console.error('取引更新エラー:', error);
+            return false;
+        }
+    };
+
+    // 取引を削除する関数
+    const deleteTransaction = async (id: string): Promise<boolean> => {
+        if (!user) return false;
+
+        try {
+            const { error } = await supabase
+                .from('transactions')
+                .delete()
+                .eq('id', id)
+                .eq('created_by', user.id);
+
+            if (error) throw error;
+
+            setTransactions(prev => prev.filter(transaction => transaction.id !== id));
+            return true;
+        } catch (error) {
+            console.error('取引削除エラー:', error);
+            return false;
+        }
+    };
+
+    // 月次統計を取得する関数
+    const getMonthlyStats = (year: number, month: number) => {
+        const startDate = new Date(year, month - 1, 1);
+        const endDate = new Date(year, month, 0, 23, 59, 59);
+
+        const monthlyTransactions = transactions.filter(transaction => {
+            const transactionDate = new Date(transaction.created_at);
+            return transactionDate >= startDate && transactionDate <= endDate;
+        });
+
+        const income = monthlyTransactions
+            .filter(t => t.is_income)
+            .reduce((sum, t) => sum + t.amount, 0);
+
+        const expense = monthlyTransactions
+            .filter(t => !t.is_income)
+            .reduce((sum, t) => sum + t.amount, 0);
+
+        return {
+            income,
+            expense,
+            balance: income - expense
+        };
+    };
+
     // 全データを再取得する関数
     const refreshAll = async () => {
         if (!user) return;
@@ -331,7 +460,8 @@ export function UserProvider({ children }: { children: ReactNode }) {
                 refreshUserProfile(),
                 refreshNotificationSettings(),
                 refreshUserFinance(),
-                fetchFixedCosts()
+                fetchFixedCosts(),
+                fetchTransactions()
             ]);
         } catch (error) {
             console.error('データ再取得エラー:', error);
@@ -358,6 +488,7 @@ export function UserProvider({ children }: { children: ReactNode }) {
                     setUserFinance(finance);
 
                     await fetchFixedCosts();
+                    await fetchTransactions();
                 }
             } catch (error) {
                 console.error('初期データ取得エラー:', error);
@@ -384,10 +515,13 @@ export function UserProvider({ children }: { children: ReactNode }) {
                     setUserFinance(finance);
 
                     await fetchFixedCosts();
+                    await fetchTransactions();
                 } else {
                     setUserProfile(null);
                     setNotificationSettings(null);
                     setUserFinance(null);
+                    setFixedCosts([]);
+                    setTransactions([]);
                 }
                 setLoading(false);
             }
@@ -402,6 +536,7 @@ export function UserProvider({ children }: { children: ReactNode }) {
         notificationSettings,
         userFinance,
         fixedCosts,
+        transactions,
         loading,
         refreshAll,
         refreshUserProfile,
@@ -414,6 +549,11 @@ export function UserProvider({ children }: { children: ReactNode }) {
         addFixedCost,
         updateFixedCost,
         deleteFixedCost,
+        fetchTransactions,
+        addTransaction,
+        updateTransaction,
+        deleteTransaction,
+        getMonthlyStats,
     };
 
     return (
