@@ -27,16 +27,29 @@ export async function GET(request: Request) {
         )
         const { error } = await supabase.auth.exchangeCodeForSession(code)
         if (!error) {
+            // 本番環境でのベースURLを環境変数から取得
+            const baseUrl = process.env.NEXT_PUBLIC_SITE_URL || process.env.VERCEL_URL || process.env.NEXTAUTH_URL
             const forwardedHost = request.headers.get('x-forwarded-host') // original origin before load balancer
             const isLocalEnv = process.env.NODE_ENV === 'development'
+            
+            let redirectUrl: string
+            
             if (isLocalEnv) {
-                // we can be sure that there is no load balancer in between, so no need to watch for X-Forwarded-Host
-                return NextResponse.redirect(`${origin}${next}`)
+                // 開発環境ではoriginを使用
+                redirectUrl = `${origin}${next}`
+            } else if (baseUrl) {
+                // 環境変数で設定されたベースURLを優先使用
+                const formattedBaseUrl = baseUrl.startsWith('http') ? baseUrl : `https://${baseUrl}`
+                redirectUrl = `${formattedBaseUrl}${next}`
             } else if (forwardedHost) {
-                return NextResponse.redirect(`https://${forwardedHost}${next}`)
+                // X-Forwarded-Hostヘッダーがある場合
+                redirectUrl = `https://${forwardedHost}${next}`
             } else {
-                return NextResponse.redirect(`${origin}${next}`)
+                // フォールバック：originを使用
+                redirectUrl = `${origin}${next}`
             }
+            
+            return NextResponse.redirect(redirectUrl)
         }
     }
 
