@@ -49,6 +49,7 @@ interface UserTransaction {
     amount: number;
     tag: string;
     is_income: boolean;
+    date: string;
     created_at: string;
 }
 
@@ -70,8 +71,7 @@ interface UserContextType {
     fetchFixedCosts: () => Promise<void>;
     addFixedCost: (fixedCost: Omit<FixedCost, 'id' | 'created_by' | 'created_at'>) => Promise<FixedCost | null>;
     updateFixedCost: (id: string, fixedCost: Partial<FixedCost>) => Promise<boolean>;
-    deleteFixedCost: (id: string) => Promise<boolean>;
-    fetchTransactions: () => Promise<void>;
+    deleteFixedCost: (id: string) => Promise<boolean>;    fetchTransactions: (year?: number, month?: number) => Promise<void>;
     addTransaction: (transaction: Omit<UserTransaction, 'id' | 'created_by' | 'created_at'>) => Promise<UserTransaction | null>;
     updateTransaction: (id: string, transaction: Partial<UserTransaction>) => Promise<boolean>;
     deleteTransaction: (id: string) => Promise<boolean>;
@@ -347,18 +347,37 @@ export function UserProvider({ children }: { children: ReactNode }) {
             console.error('固定費削除エラー:', error);
             return false;
         }
-    };
-
-    // 取引を取得する関数
-    const fetchTransactions = async () => {
+    };    // 取引を取得する関数（月指定可能）
+    const fetchTransactions = async (year?: number, month?: number) => {
         if (!user) return;
 
         try {
-            const { data, error } = await supabase
+            let query = supabase
                 .from('transactions')
                 .select('*')
-                .eq('created_by', user.id)
-                .order('created_at', { ascending: false });
+                .eq('created_by', user.id);
+
+            // 年月が指定されている場合、その月のデータのみ取得
+            if (year && month) {
+                const startDate = new Date(year, month - 1, 1).toISOString().split('T')[0];
+                const endDate = new Date(year, month, 0).toISOString().split('T')[0];
+                
+                // dateカラムが存在する場合はそれを使用、存在しない場合はcreated_atを使用
+                try {
+                    query = query
+                        .gte('date', startDate)
+                        .lte('date', endDate);
+                } catch (error) {
+                    // dateカラムが存在しない場合はcreated_atを使用
+                    const startDateTime = new Date(year, month - 1, 1).toISOString();
+                    const endDateTime = new Date(year, month, 0, 23, 59, 59).toISOString();
+                    query = query
+                        .gte('created_at', startDateTime)
+                        .lte('created_at', endDateTime);
+                }
+            }
+
+            const { data, error } = await query.order('created_at', { ascending: false });
 
             if (error) throw error;
             setTransactions(data || []);
@@ -433,15 +452,15 @@ export function UserProvider({ children }: { children: ReactNode }) {
             console.error('取引削除エラー:', error);
             return false;
         }
-    };
-
-    // 月次統計を取得する関数
+    };    // 月次統計を取得する関数
     const getMonthlyStats = (year: number, month: number) => {
         const startDate = new Date(year, month - 1, 1);
         const endDate = new Date(year, month, 0, 23, 59, 59);
 
         const monthlyTransactions = transactions.filter(transaction => {
-            const transactionDate = new Date(transaction.created_at);
+            // dateカラムが存在しない場合はcreated_atを使用
+            const dateToUse = transaction.date || transaction.created_at;
+            const transactionDate = new Date(dateToUse);
             return transactionDate >= startDate && transactionDate <= endDate;
         });
 
@@ -458,27 +477,26 @@ export function UserProvider({ children }: { children: ReactNode }) {
             expense,
             balance: income - expense
         };
-    };
-
-    // 全データを再取得する関数
+    };// 全データを再取得する関数
     const refreshAll = async () => {
         if (!user) return;
         
         setLoading(true);
         try {
+            const currentDate = new Date();
             await Promise.all([
                 refreshUserProfile(),
                 refreshNotificationSettings(),
                 refreshUserFinance(),
                 fetchFixedCosts(),
-                fetchTransactions()
+                fetchTransactions(currentDate.getFullYear(), currentDate.getMonth() + 1)
             ]);
         } catch (error) {
             console.error('データ再取得エラー:', error);
         } finally {
             setLoading(false);
         }
-    };    // 認証状態の監視とユーザープロフィールの取得
+    };// 認証状態の監視とユーザープロフィールの取得
     useEffect(() => {
         let isMounted = true;
         let sessionCheckInterval: NodeJS.Timeout;
@@ -511,12 +529,11 @@ export function UserProvider({ children }: { children: ReactNode }) {
 
                     setUserProfile(profile);
                     setNotificationSettings(settings);
-                    setUserFinance(finance);
-
-                    // 固定費と取引は並列で取得
+                    setUserFinance(finance);                    // 固定費と現在月の取引を並列で取得
+                    const currentDate = new Date();
                     await Promise.all([
                         fetchFixedCosts(),
-                        fetchTransactions()
+                        fetchTransactions(currentDate.getFullYear(), currentDate.getMonth() + 1)
                     ]);
                 }
             } catch (error) {
@@ -573,11 +590,10 @@ export function UserProvider({ children }: { children: ReactNode }) {
 
                         setUserProfile(profile);
                         setNotificationSettings(settings);
-                        setUserFinance(finance);
-
+                        setUserFinance(finance);                        const currentDate = new Date();
                         await Promise.all([
                             fetchFixedCosts(),
-                            fetchTransactions()
+                            fetchTransactions(currentDate.getFullYear(), currentDate.getMonth() + 1)
                         ]);
 
                         // セッションチェックを開始

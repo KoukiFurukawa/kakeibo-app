@@ -202,7 +202,8 @@ export default function Home() {
     loading, 
     refreshAll, 
     addTransaction,
-    getMonthlyStats 
+    getMonthlyStats,
+    fetchTransactions
   } = useUser();
 
   // 収支入力モーダルの状態
@@ -219,27 +220,30 @@ export default function Home() {
   // 新しいstate
   const [activeTab, setActiveTab] = useState<'expense' | 'income'>('expense');
   const [selectedTag, setSelectedTag] = useState<string>('all');
+  const [selectedYear, setSelectedYear] = useState(new Date().getFullYear());
+  const [selectedMonth, setSelectedMonth] = useState(new Date().getMonth() + 1);
 
   const tags = [
     '食費', '日用品', '交通費', '娯楽', '衣服', '医療', '住居', '水道光熱費', '通信費', '教育', '給料', 'その他'
   ];
 
-  // 現在の月の統計を取得
-  const currentDate = new Date();
+  // 選択された月の統計を取得
   const monthlyStats = transactions.length > 0 
-    ? getMonthlyStats(currentDate.getFullYear(), currentDate.getMonth() + 1)
+    ? getMonthlyStats(selectedYear, selectedMonth)
     : { income: 0, expense: 0, balance: 0 };
 
-  // 今月の取引データを取得
+  // 選択された月の取引データを取得
   const currentMonthTransactions = useMemo(() => {
-    const startDate = new Date(currentDate.getFullYear(), currentDate.getMonth(), 1);
-    const endDate = new Date(currentDate.getFullYear(), currentDate.getMonth() + 1, 0, 23, 59, 59);
+    const startDate = new Date(selectedYear, selectedMonth - 1, 1);
+    const endDate = new Date(selectedYear, selectedMonth, 0, 23, 59, 59);
 
     return transactions.filter(transaction => {
-      const transactionDate = new Date(transaction.created_at);
+      // dateカラムが存在しない場合はcreated_atを使用
+      const dateToUse = transaction.date || transaction.created_at;
+      const transactionDate = new Date(dateToUse);
       return transactionDate >= startDate && transactionDate <= endDate;
     });
-  }, [transactions, currentDate]);
+  }, [transactions, selectedYear, selectedMonth]);
 
   // 支出タグごとの集計データ
   const expenseByTag = useMemo(() => {
@@ -275,7 +279,12 @@ export default function Home() {
       filtered = filtered.filter(t => t.tag === selectedTag);
     }
 
-    return filtered.sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime());
+    return filtered.sort((a, b) => {
+      // dateカラムが存在しない場合はcreated_atを使用
+      const dateA = a.date || a.created_at;
+      const dateB = b.date || b.created_at;
+      return new Date(dateB).getTime() - new Date(dateA).getTime();
+    });
   }, [currentMonthTransactions, activeTab, selectedTag]);
 
   // 使用可能なタグ一覧
@@ -287,6 +296,13 @@ export default function Home() {
     ));
     return tagsInTransactions.sort();
   }, [currentMonthTransactions, activeTab]);
+
+  // 月変更時のデータ取得
+  const handleMonthChange = async (year: number, month: number) => {
+    setSelectedYear(year);
+    setSelectedMonth(month);
+    await fetchTransactions(year, month);
+  };
 
   const handleInputSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -304,11 +320,12 @@ export default function Home() {
         description: inputDescription,
         amount: Number(inputAmount),
         tag: inputTag,
-        is_income: inputType === 'income'
+        is_income: inputType === 'income',
+        date: inputDate
       });
 
       if (newTransaction) {
-        setShowInputModal(false);
+        setShowInputModal(false);        
         setMessage('収支を追加しました');
         // フォームをリセット
         setInputTitle('');
@@ -317,6 +334,9 @@ export default function Home() {
         setInputTag('');
         setInputDate(new Date().toISOString().split('T')[0]);
         setInputType('expense');
+        
+        // 現在選択されている月のデータを再取得
+        await fetchTransactions(selectedYear, selectedMonth);
         
         setTimeout(() => setMessage(''), 3000);
       } else {
@@ -345,14 +365,6 @@ export default function Home() {
   useEffect(() => {
     let timeoutId: NodeJS.Timeout;
     
-    // ユーザーがログインしているが、まだtransactionsが初期化されていない場合のみrefreshを実行
-    if (!loading && transactions.length === 0 && user) {
-      timeoutId = setTimeout(() => {
-        console.log('取引データが空のため、データを再取得します');
-        refreshAll();
-      }, 1000); // 1秒待ってからリフレッシュ
-    }
-    
     // 長時間のローディングを防ぐためのタイムアウト
     if (loading) {
       timeoutId = setTimeout(() => {
@@ -369,7 +381,7 @@ export default function Home() {
         clearTimeout(timeoutId);
       }
     };
-  }, [loading, transactions.length, refreshAll, user]);
+  }, [loading, transactions.length, refreshAll, user, selectedYear, selectedMonth, fetchTransactions]);
 
   if (loading) {
     return (
@@ -394,10 +406,59 @@ export default function Home() {
           {message}
         </div>
       )}
+
+      {/* 月選択 */}
+      <div className="bg-white p-4 rounded-lg shadow-md">
+        <div className="flex items-center justify-between">
+          <h2 className="text-lg font-semibold">月選択</h2>
+          <div className="flex items-center gap-2">
+            <select
+              value={selectedYear}
+              onChange={async (e) => {
+                const year = Number(e.target.value);
+                await handleMonthChange(year, selectedMonth);
+              }}
+              className="px-3 py-2 border border-gray-300 rounded-md text-sm"
+            >
+              {Array.from({ length: 5 }, (_, i) => {
+                const year = new Date().getFullYear() - 2 + i;
+                return (
+                  <option key={year} value={year}>
+                    {year}年
+                  </option>
+                );
+              })}
+            </select>
+            <select
+              value={selectedMonth}
+              onChange={async (e) => {
+                const month = Number(e.target.value);
+                await handleMonthChange(selectedYear, month);
+              }}
+              className="px-3 py-2 border border-gray-300 rounded-md text-sm"
+            >
+              {Array.from({ length: 12 }, (_, i) => (
+                <option key={i + 1} value={i + 1}>
+                  {i + 1}月
+                </option>
+              ))}
+            </select>
+            <button
+              onClick={async () => {
+                const now = new Date();
+                await handleMonthChange(now.getFullYear(), now.getMonth() + 1);
+              }}
+              className="px-3 py-2 bg-blue-500 text-white rounded-md text-sm hover:bg-blue-600"
+            >
+              今月
+            </button>
+          </div>
+        </div>
+      </div>
       
       <div className="grid grid-cols-1 md:grid-cols-2 gap-4 sm:gap-6 mt-3">
         <div className="bg-white p-4 sm:p-6 rounded-lg shadow-md">
-          <h2 className="text-lg sm:text-xl font-semibold mb-3 sm:mb-4">今月の収支</h2>
+          <h2 className="text-lg sm:text-xl font-semibold mb-3 sm:mb-4">{selectedYear}年{selectedMonth}月の収支</h2>
           <div className="flex justify-between">
             <div>
               <p className="text-xs sm:text-sm text-gray-500">収入</p>
@@ -463,11 +524,9 @@ export default function Home() {
             />
           </div>
         </div>
-      )}
-      
-      <div className="bg-white p-4 sm:p-6 rounded-lg shadow-md">
-        <div className="flex justify-between items-center mb-4">
-          <h2 className="text-lg sm:text-xl font-semibold">今月の取引</h2>
+      )}        <div className="bg-white p-4 sm:p-6 rounded-lg shadow-md">
+          <div className="flex justify-between items-center mb-4">
+            <h2 className="text-lg sm:text-xl font-semibold">{selectedYear}年{selectedMonth}月の取引</h2>
           
           {/* タブ切り替え */}
           <div className="flex gap-2">
@@ -533,7 +592,7 @@ export default function Home() {
                 filteredTransactions.map((transaction) => (
                   <tr key={transaction.id}>
                     <td className="px-3 py-2 sm:px-6 sm:py-4 whitespace-nowrap text-xs sm:text-sm text-gray-500">
-                      {new Date(transaction.created_at).toLocaleDateString('ja-JP')}
+                      {new Date(transaction.date || transaction.created_at).toLocaleDateString('ja-JP')}
                     </td>
                     <td className="px-3 py-2 sm:px-6 sm:py-4 whitespace-nowrap text-xs sm:text-sm text-gray-900">
                       {transaction.title}
@@ -654,6 +713,17 @@ export default function Home() {
                     <option key={tag} value={tag}>{tag}</option>
                   ))}
                 </select>
+              </div>
+
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-2">日付</label>
+                <input
+                  type="date"
+                  value={inputDate}
+                  onChange={(e) => setInputDate(e.target.value)}
+                  className="w-full p-3 border border-gray-300 rounded-md text-sm"
+                  required
+                />
               </div>
 
               <div>
