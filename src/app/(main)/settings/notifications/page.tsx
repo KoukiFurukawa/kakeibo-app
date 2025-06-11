@@ -2,6 +2,7 @@
 
 import { useState, useEffect } from 'react';
 import { useUser } from '@/contexts/UserContext';
+import NotificationSettings from '@/components/NotificationSettings';
 import Link from 'next/link';
 
 export default function NotificationsPage() {
@@ -71,13 +72,16 @@ export default function NotificationsPage() {
                         <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" />
                     </svg>
                 </Link>
-                <h1 className="text-xl sm:text-2xl font-bold">通知</h1>
-            </div>
+                <h1 className="text-xl sm:text-2xl font-bold">通知</h1>            </div>
 
+            {/* PWA Push Notifications */}
+            <NotificationSettings />
+
+            {/* App Notifications */}
             <div className="bg-white rounded-lg shadow-sm border border-gray-200">
                 <div className="p-4 border-b border-gray-200">
-                    <h2 className="text-lg font-medium">通知設定</h2>
-                    <p className="text-sm text-gray-500 mt-1">受け取りたい通知を選択してください</p>
+                    <h2 className="text-lg font-medium">アプリ内通知設定</h2>
+                    <p className="text-sm text-gray-500 mt-1">アプリ内で表示される通知の設定を変更できます</p>
                 </div>
                 <div className="divide-y divide-gray-200">
                     {notificationItems.map((item) => (

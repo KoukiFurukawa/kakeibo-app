@@ -1,0 +1,15 @@
+<svg width="152" height="152" viewBox="0 0 152 152" fill="none" xmlns="http://www.w3.org/2000/svg">
+  <rect width="152" height="152" fill="#3b82f6"/>
+  <rect x="38" y="28.5" width="76" height="95" rx="4.75" fill="white"/>
+  <rect x="45.125" y="35.625" width="61.75" height="23.75" rx="2.375" fill="#1f2937"/>
+  <text x="76" y="53.875" text-anchor="middle" fill="white" font-family="monospace" font-size="7.6">¥123,456</text>
+  <circle cx="53.4375" cy="71.25" r="5.9375" fill="#f3f4f6" stroke="#d1d5db" stroke-width="0.59375"/>
+  <circle cx="76" cy="71.25" r="5.9375" fill="#f3f4f6" stroke="#d1d5db" stroke-width="0.59375"/>
+  <circle cx="98.5625" cy="71.25" r="5.9375" fill="#f3f4f6" stroke="#d1d5db" stroke-width="0.59375"/>
+  <circle cx="53.4375" cy="86.1875" r="5.9375" fill="#f3f4f6" stroke="#d1d5db" stroke-width="0.59375"/>
+  <circle cx="76" cy="86.1875" r="5.9375" fill="#f3f4f6" stroke="#d1d5db" stroke-width="0.59375"/>
+  <circle cx="98.5625" cy="86.1875" r="5.9375" fill="#f3f4f6" stroke="#d1d5db" stroke-width="0.59375"/>
+  <circle cx="53.4375" cy="101.125" r="5.9375" fill="#f3f4f6" stroke="#d1d5db" stroke-width="0.59375"/>
+  <circle cx="76" cy="101.125" r="5.9375" fill="#f3f4f6" stroke="#d1d5db" stroke-width="0.59375"/>
+  <circle cx="98.5625" cy="101.125" r="5.9375" fill="#10b981" stroke="#059669" stroke-width="0.59375"/>
+</svg>

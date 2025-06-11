@@ -195,6 +195,7 @@ function BudgetProgressChart({ used, budget, label, isSavings = false }: {
 
 export default function Home() {
   const { 
+    user,
     userProfile, 
     userFinance,
     transactions, 
@@ -342,15 +343,33 @@ export default function Home() {
 
   // UserContextのデータ初期化を待つ
   useEffect(() => {
+    let timeoutId: NodeJS.Timeout;
+    
     // ユーザーがログインしているが、まだtransactionsが初期化されていない場合のみrefreshを実行
-    if (!loading && transactions.length === 0) {
-      const timer = setTimeout(() => {
+    if (!loading && transactions.length === 0 && user) {
+      timeoutId = setTimeout(() => {
+        console.log('取引データが空のため、データを再取得します');
         refreshAll();
-      }, 100); // 短い遅延でUserContextの初期化を待つ
-      
-      return () => clearTimeout(timer);
+      }, 1000); // 1秒待ってからリフレッシュ
     }
-  }, [loading, transactions.length, refreshAll]);
+    
+    // 長時間のローディングを防ぐためのタイムアウト
+    if (loading) {
+      timeoutId = setTimeout(() => {
+        console.warn('ローディングが長時間続いています。強制的に終了します。');
+        // 強制的にローディングを終了（最後の手段）
+        if (user) {
+          refreshAll();
+        }
+      }, 10000); // 10秒でタイムアウト
+    }
+    
+    return () => {
+      if (timeoutId) {
+        clearTimeout(timeoutId);
+      }
+    };
+  }, [loading, transactions.length, refreshAll, user]);
 
   if (loading) {
     return (
