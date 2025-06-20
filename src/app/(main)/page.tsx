@@ -13,12 +13,12 @@ import { generateExpenseByTag } from "@/utils/chartHelpers";
 import { Transaction, TransactionInput } from "@/types/transaction";
 
 export default function Home() {
-  const { 
+  const {
     user,
     userFinance,
-    transactions, 
-    loading, 
-    refreshAll, 
+    transactions,
+    loading,
+    refreshAll,
     addTransaction,
     getMonthlyStats,
     fetchTransactions
@@ -34,7 +34,7 @@ export default function Home() {
   const [selectedMonth, setSelectedMonth] = useState(new Date().getMonth() + 1);
 
   // 月別統計データ
-  const monthlyStats = transactions.length > 0 
+  const monthlyStats = transactions.length > 0
     ? getMonthlyStats(selectedYear, selectedMonth)
     : { income: 0, expense: 0, balance: 0 };
 
@@ -51,14 +51,14 @@ export default function Home() {
   }, [transactions, selectedYear, selectedMonth]);
 
   // 支出タグごとの集計データ
-  const expenseByTag = useMemo(() => 
-    generateExpenseByTag(currentMonthTransactions), 
+  const expenseByTag = useMemo(() =>
+    generateExpenseByTag(currentMonthTransactions),
     [currentMonthTransactions]
   );
 
   // タグフィルタリングされた取引
   const filteredTransactions = useMemo(() => {
-    let filtered = currentMonthTransactions.filter(t => 
+    let filtered = currentMonthTransactions.filter(t =>
       activeTab === 'expense' ? !t.is_income : t.is_income
     );
 
@@ -99,7 +99,7 @@ export default function Home() {
       const newTransaction = await addTransaction(data);
 
       if (newTransaction) {
-        setShowInputModal(false);        
+        setShowInputModal(false);
         setMessage('収支を追加しました');
         await fetchTransactions(selectedYear, selectedMonth);
         setTimeout(() => setMessage(''), 3000);
@@ -120,10 +120,17 @@ export default function Home() {
     setSelectedTag('all');
   };
 
+  useEffect(() => {
+    // 全データ取得
+    if (user) {
+      fetchTransactions();
+    }
+  },[user])
+
   // データ初期化監視
   useEffect(() => {
     let timeoutId: NodeJS.Timeout;
-    
+
     if (loading) {
       timeoutId = setTimeout(() => {
         console.warn('ローディングが長時間続いています。強制的に終了します。');
@@ -132,7 +139,7 @@ export default function Home() {
         }
       }, 10000); // 10秒でタイムアウト
     }
-    
+
     return () => {
       if (timeoutId) {
         clearTimeout(timeoutId);
@@ -143,7 +150,7 @@ export default function Home() {
   if (loading) {
     return (
       <div className="flex items-center justify-center min-h-[400px]">
-        <LoadingWithReload 
+        <LoadingWithReload
           message="ダッシュボードデータを読み込み中..."
           onReload={refreshAll}
         />
@@ -155,31 +162,30 @@ export default function Home() {
     <div className="space-y-4 sm:space-y-6 pb-20">
       {/* メッセージ表示 */}
       {message && (
-        <div className={`p-3 rounded-md text-sm ${
-          message.includes('失敗') 
-            ? 'bg-red-50 text-red-700 border border-red-200' 
+        <div className={`p-3 rounded-md text-sm ${message.includes('失敗')
+            ? 'bg-red-50 text-red-700 border border-red-200'
             : 'bg-green-50 text-green-700 border border-green-200'
-        }`}>
+          }`}>
           {message}
         </div>
       )}
 
       {/* 月選択 */}
-      <MonthSelector 
+      <MonthSelector
         selectedYear={selectedYear}
         selectedMonth={selectedMonth}
         onMonthChange={handleMonthChange}
       />
-      
+
       <div className="grid grid-cols-1 md:grid-cols-2 gap-4 sm:gap-6 mt-3">
         {/* 月次収支概要 */}
-        <MonthSummary 
+        <MonthSummary
           year={selectedYear}
           month={selectedMonth}
           stats={monthlyStats}
           transactionCount={transactions.length}
         />
-        
+
         {/* 支出内訳 */}
         <div className="bg-white p-4 sm:p-6 rounded-lg shadow-md">
           <h2 className="text-lg sm:text-xl font-semibold mb-3 sm:mb-4">支出の内訳</h2>
@@ -188,7 +194,7 @@ export default function Home() {
       </div>
 
       {/* 予算使用率セクション */}
-      <BudgetProgress 
+      <BudgetProgress
         userFinance={userFinance}
         expenseByTag={expenseByTag}
         monthlyStats={monthlyStats}

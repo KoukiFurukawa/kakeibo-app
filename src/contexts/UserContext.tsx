@@ -3,55 +3,7 @@
 import React, { createContext, useContext, useState, useEffect, ReactNode } from 'react';
 import { User } from '@supabase/supabase-js';
 import { supabase } from '@/utils/manage_supabase';
-
-interface UserProfile {
-    id: string;
-    email: string;
-    username: string | null;
-    target_month_savings?: number;
-    notifications?: boolean;
-    created_at?: string;
-    updated_at?: string;
-}
-
-interface UserNotificationSettings {
-    id: string;
-    todo: boolean;
-    system: boolean;
-    event: boolean;
-    created_at?: string;
-}
-
-interface UserFinance {
-    savings_goal: number;
-    food: number;
-    entertainment: number;
-    clothing: number;
-    daily_goods: number;
-    other: number;
-}
-
-interface FixedCost {
-    id: string;
-    created_by?: string;
-    title: string;
-    cost: number;
-    tag: string;
-    debit_date: number;
-    created_at?: string;
-}
-
-interface UserTransaction {
-    id: string;
-    created_by: string;
-    title: string;
-    description: string;
-    amount: number;
-    tag: string;
-    is_income: boolean;
-    date: string;
-    created_at: string;
-}
+import { UserProfile, UserNotificationSettings, UserFinance, FixedCost, UserTransaction } from '@/types/user';
 
 interface UserContextType {
     user: User | null;
@@ -71,7 +23,8 @@ interface UserContextType {
     fetchFixedCosts: () => Promise<void>;
     addFixedCost: (fixedCost: Omit<FixedCost, 'id' | 'created_by' | 'created_at'>) => Promise<FixedCost | null>;
     updateFixedCost: (id: string, fixedCost: Partial<FixedCost>) => Promise<boolean>;
-    deleteFixedCost: (id: string) => Promise<boolean>;    fetchTransactions: (year?: number, month?: number) => Promise<void>;
+    deleteFixedCost: (id: string) => Promise<boolean>;
+    fetchTransactions: (year?: number, month?: number) => Promise<void>;
     addTransaction: (transaction: Omit<UserTransaction, 'id' | 'created_by' | 'created_at'>) => Promise<UserTransaction | null>;
     updateTransaction: (id: string, transaction: Partial<UserTransaction>) => Promise<boolean>;
     deleteTransaction: (id: string) => Promise<boolean>;
