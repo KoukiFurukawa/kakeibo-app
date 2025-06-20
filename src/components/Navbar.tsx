@@ -2,13 +2,22 @@
 
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useAuth, useHandleLogout } from '@/utils/manage_supabase';
+import { useNotifications } from '@/hooks/useNotifications';
 
 const Navbar = () => {
     const pathname = usePathname();
     const [isNotificationOpen, setIsNotificationOpen] = useState(false);
     const { user, loading, isAuthenticated } = useAuth();
+    const { 
+        notifications, 
+        unreadCount, 
+        loading: notificationsLoading, 
+        fetchNotifications, 
+        markAsRead,
+        markAllAsRead 
+    } = useNotifications();
 
     const navItems = [
         { name: 'ホーム', path: '/' },
@@ -17,11 +26,13 @@ const Navbar = () => {
         { name: '設定', path: '/settings' },
     ];
 
-    // 仮のお知らせデータ（後で外部から取得）
-    const notifications = [
-        { id: 1, title: 'システムメンテナンスのお知らせ', date: '2024-01-15', content: '1月20日にシステムメンテナンスを実施します。' },
-        { id: 2, title: '新機能追加のお知らせ', date: '2024-01-10', content: 'カレンダー機能が追加されました。' },
-    ];
+    // 通知モーダルを開いたときに通知を既読にする
+    useEffect(() => {
+        if (isNotificationOpen && unreadCount > 0) {
+            // モーダルを開いたら全ての通知を既読にする
+            markAllAsRead();
+        }
+    }, [isNotificationOpen, unreadCount, markAllAsRead]);
 
     // 現在のページ名を取得する関数（サブパスにも対応）
     const getCurrentPageName = () => {
@@ -56,7 +67,29 @@ const Navbar = () => {
         return 'ホーム';
     };
 
+    // 日付をフォーマットする関数
+    const formatDate = (dateStr: string) => {
+        const date = new Date(dateStr);
+        return date.toLocaleDateString('ja-JP', { year: 'numeric', month: '2-digit', day: '2-digit' });
+    };
+
+    // 通知の種類に応じたクラスを返す関数
+    const getNotificationTypeClass = (type: string) => {
+        switch (type) {
+            case 'warning': return 'bg-yellow-100 text-yellow-800 border-yellow-200';
+            case 'error': return 'bg-red-100 text-red-800 border-red-200';
+            case 'success': return 'bg-green-100 text-green-800 border-green-200';
+            case 'system': return 'bg-purple-100 text-purple-800 border-purple-200';
+            default: return 'bg-blue-100 text-blue-800 border-blue-200';
+        }
+    };
+
     const handleLogout = useHandleLogout();
+
+    const handleNotificationClick = (id: string) => {
+        // 既に既読かもしれないが、念のため既読にする
+        markAsRead(id);
+    };
 
     // ローディング中の表示
     if (loading) {
@@ -117,7 +150,7 @@ const Navbar = () => {
                                     className="relative p-2 rounded-md hover:bg-gray-100 focus:outline-none"
                                 >
                                     <svg
-                                        className="h-6 w-6"
+                                        className={`h-6 w-6 ${unreadCount > 0 ? 'text-red-500' : ''}`}
                                         xmlns="http://www.w3.org/2000/svg"
                                         fill="none"
                                         viewBox="0 0 24 24"
@@ -130,8 +163,10 @@ const Navbar = () => {
                                             d="M15 17h5l-1.405-1.405A2.032 2.032 0 0118 14.158V11a6.002 6.002 0 00-4-5.659V5a2 2 0 10-4 0v.341C7.67 6.165 6 8.388 6 11v3.159c0 .538-.214 1.055-.595 1.436L4 17h5m6 0v1a3 3 0 11-6 0v-1m6 0H9"
                                         />
                                     </svg>
-                                    {notifications.length > 0 && (
-                                        <span className="absolute top-0 right-0 block h-2 w-2 rounded-full bg-red-500"></span>
+                                    {unreadCount > 0 && (
+                                        <span className="absolute top-0 right-0 block h-5 w-5 rounded-full bg-red-500 text-white text-xs flex items-center justify-center">
+                                            {unreadCount}
+                                        </span>
                                     )}
                                 </button>
 
@@ -162,7 +197,7 @@ const Navbar = () => {
                                 className="relative p-2 rounded-md hover:bg-gray-100 focus:outline-none flex-shrink-0"
                             >
                                 <svg
-                                    className="h-6 w-6"
+                                    className={`h-6 w-6 ${unreadCount > 0 ? 'text-red-500' : ''}`}
                                     xmlns="http://www.w3.org/2000/svg"
                                     fill="none"
                                     viewBox="0 0 24 24"
@@ -175,8 +210,10 @@ const Navbar = () => {
                                         d="M15 17h5l-1.405-1.405A2.032 2.032 0 0118 14.158V11a6.002 6.002 0 00-4-5.659V5a2 2 0 10-4 0v.341C7.67 6.165 6 8.388 6 11v3.159c0 .538-.214 1.055-.595 1.436L4 17h5m6 0v1a3 3 0 11-6 0v-1m6 0H9"
                                     />
                                 </svg>
-                                {notifications.length > 0 && (
-                                    <span className="absolute top-0 right-0 block h-2 w-2 rounded-full bg-red-500"></span>
+                                {unreadCount > 0 && (
+                                    <span className="absolute top-0 right-0 block h-5 w-5 rounded-full bg-red-500 text-white text-xs flex items-center justify-center">
+                                        {unreadCount}
+                                    </span>
                                 )}
                             </button>
                         </div>
@@ -211,18 +248,32 @@ const Navbar = () => {
                             </button>
                         </div>
                         <div className="p-4 overflow-y-auto max-h-80">
-                            {notifications.length > 0 ? (
+                            {notificationsLoading ? (
+                                <div className="text-center py-4">
+                                    <div className="inline-block animate-spin rounded-full h-5 w-5 border-b-2 border-blue-600"></div>
+                                    <p className="mt-2 text-sm text-gray-500">読み込み中...</p>
+                                </div>
+                            ) : notifications.length > 0 ? (
                                 <div className="space-y-3">
                                     {notifications.map((notification) => (
-                                        <div key={notification.id} className="border-b pb-3 last:border-b-0">
-                                            <h4 className="font-medium text-sm">{notification.title}</h4>
-                                            <p className="text-xs text-gray-500 mt-1">{notification.date}</p>
-                                            <p className="text-sm text-gray-700 mt-2">{notification.content}</p>
+                                        <div 
+                                            key={notification.id} 
+                                            className={`border rounded-md p-3 ${notification.is_read ? '' : 'border-l-4 border-l-blue-500'} ${getNotificationTypeClass(notification.type)}`}
+                                            onClick={() => handleNotificationClick(notification.id)}
+                                        >
+                                            <div className="flex justify-between items-start">
+                                                <h4 className="font-medium text-sm">{notification.title}</h4>
+                                                {!notification.is_read && (
+                                                    <span className="bg-blue-500 text-white text-xs px-2 py-0.5 rounded-full">新着</span>
+                                                )}
+                                            </div>
+                                            <p className="text-xs text-gray-500 mt-1">{formatDate(notification.created_at)}</p>
+                                            <p className="text-sm text-gray-700 mt-2">{notification.description}</p>
                                         </div>
                                     ))}
                                 </div>
                             ) : (
-                                <p className="text-gray-500 text-center py-8">特になし</p>
+                                <p className="text-gray-500 text-center py-8">お知らせはありません</p>
                             )}
                         </div>
                     </div>
