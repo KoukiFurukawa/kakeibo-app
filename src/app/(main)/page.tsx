@@ -3,232 +3,38 @@
 import { useUser } from "@/contexts/UserContext";
 import { useEffect, useState, useMemo } from "react";
 import LoadingWithReload from "@/components/LoadingWithReload";
-
-// 円グラフコンポーネント
-function PieChart({ data }: { data: Array<{ label: string; value: number; color: string }> }) {
-  const total = data.reduce((sum, item) => sum + item.value, 0);
-  
-  if (total === 0) {
-    return (
-      <div className="h-48 sm:h-64 flex items-center justify-center bg-gray-100 rounded">
-        <p className="text-gray-500 text-sm">支出データがありません</p>
-      </div>
-    );
-  }
-
-  const strokeWidth = 12;
-  
-  // モバイルとデスクトップの設定を統一
-  const mobileConfig = { cx: 80, cy: 80, r: 60, size: 160 };
-  const desktopConfig = { cx: 80, cy: 80, r: 60, size: 200 };
-
-  let accumulatedAngle = 0;
-
-  const createPath = (startAngle: number, endAngle: number, centerX: number, centerY: number, radius: number) => {
-    const start = polarToCartesian(centerX, centerY, radius, endAngle);
-    const end = polarToCartesian(centerX, centerY, radius, startAngle);
-    const largeArcFlag = endAngle - startAngle <= 180 ? "0" : "1";
-    
-    return [
-      "M", start.x, start.y, 
-      "A", radius, radius, 0, largeArcFlag, 0, end.x, end.y
-    ].join(" ");
-  };
-
-  const polarToCartesian = (centerX: number, centerY: number, radius: number, angleInDegrees: number) => {
-    const angleInRadians = (angleInDegrees - 90) * Math.PI / 180.0;
-    return {
-      x: centerX + (radius * Math.cos(angleInRadians)),
-      y: centerY + (radius * Math.sin(angleInRadians))
-    };
-  };
-
-  return (
-    <div className="h-48 sm:h-64 flex flex-row sm:flex-col items-center justify-center gap-4 sm:gap-2">
-      {/* グラフ部分 */}
-      <div className="flex-shrink-0">
-        <svg width={mobileConfig.size} height={mobileConfig.size} className="sm:w-[200px] sm:h-[200px]">
-          {/* 背景円 */}
-          <circle
-            cx={mobileConfig.cx}
-            cy={mobileConfig.cy}
-            r={mobileConfig.r}
-            fill="none"
-            stroke="#f3f4f6"
-            strokeWidth={strokeWidth}
-            className="sm:cx-[100] sm:cy-[100] sm:r-[75]"
-          />
-          
-          {data.map((item, index) => {
-            const percentage = (item.value / total) * 100;
-            const angle = (item.value / total) * 360;
-            const startAngle = accumulatedAngle;
-            const endAngle = accumulatedAngle + angle;
-            
-            // モバイル用のパス（デフォルト）
-            const pathData = createPath(startAngle, endAngle, mobileConfig.cx, mobileConfig.cy, mobileConfig.r);
-            accumulatedAngle += angle;
-
-            return (
-              <path
-                key={index}
-                d={pathData}
-                fill="none"
-                stroke={item.color}
-                strokeWidth={strokeWidth}
-                strokeLinecap="round"
-                className="sm:hidden"
-              />
-            );
-          })}
-          
-          {/* デスクトップ用のパス（レスポンシブ対応） */}
-          {data.map((item, index) => {
-            const percentage = (item.value / total) * 100;
-            const angle = (item.value / total) * 360;
-            const startAngle = data.slice(0, index).reduce((sum, prev) => sum + (prev.value / total) * 360, 0);
-            const endAngle = startAngle + angle;
-            
-            const pathData = createPath(startAngle, endAngle, desktopConfig.cx, desktopConfig.cy, desktopConfig.r);
-
-            return (
-              <path
-                key={`desktop-${index}`}
-                d={pathData}
-                fill="none"
-                stroke={item.color}
-                strokeWidth={strokeWidth}
-                strokeLinecap="round"
-                className="hidden sm:block"
-              />
-            );
-          })}
-          
-          {/* 中央のテキスト */}
-          <text x={mobileConfig.cx} y={mobileConfig.cy - 4} textAnchor="middle" className="text-xs sm:text-sm font-medium fill-gray-700 sm:x-[100] sm:y-[94]">
-            総支出
-          </text>
-          <text x={mobileConfig.cx} y={mobileConfig.cy + 8} textAnchor="middle" className="text-xs fill-gray-600 sm:x-[100] sm:y-[108]">
-            ¥{total.toLocaleString()}
-          </text>
-        </svg>
-      </div>
-      
-      {/* 凡例部分 */}
-      <div className="flex-1 min-w-0 max-w-full sm:max-w-none">
-        <div className="grid grid-cols-1 sm:grid-cols-2 gap-1 text-xs">
-          {data.slice(0, 6).map((item, index) => (
-            <div key={index} className="flex items-center min-w-0">
-              <div 
-                className="w-3 h-3 rounded-full mr-2 flex-shrink-0" 
-                style={{ backgroundColor: item.color }}
-              ></div>
-              <span className="truncate">
-                {item.label}: ¥{item.value.toLocaleString()} ({((item.value / total) * 100).toFixed(1)}%)
-              </span>
-            </div>
-          ))}
-          {data.length > 6 && (
-            <div className="text-xs text-gray-500 sm:col-span-2 mt-1">
-              他 {data.length - 6} 項目
-            </div>
-          )}
-        </div>
-      </div>
-    </div>
-  );
-}
-
-// 予算使用率グラフコンポーネント
-function BudgetProgressChart({ used, budget, label, isSavings = false }: { 
-  used: number; 
-  budget: number; 
-  label: string;
-  isSavings?: boolean;
-}) {
-  const percentage = budget > 0 ? Math.min((used / budget) * 100, 100) : 0;
-  const remaining = Math.max(budget - used, 0);
-  
-  const getColor = () => {
-    if (isSavings) {
-      // 貯金の場合は達成度に応じて色を変える
-      if (percentage >= 100) return 'bg-green-500';
-      if (percentage >= 80) return 'bg-blue-500';
-      return 'bg-gray-400';
-    } else {
-      // 支出の場合は予算オーバーを警告
-      if (percentage >= 100) return 'bg-red-500';
-      if (percentage >= 80) return 'bg-yellow-500';
-      return 'bg-green-500';
-    }
-  };
-
-  const getStatusText = () => {
-    if (isSavings) {
-      return percentage >= 100 ? '目標達成！' : `目標まで ¥${remaining.toLocaleString()}`;
-    } else {
-      return percentage >= 100 ? '予算オーバー' : `残り ¥${remaining.toLocaleString()}`;
-    }
-  };
-
-  return (
-    <div className="space-y-2">
-      <div className="flex justify-between text-sm">
-        <span className="font-medium">{label}</span>
-        <span className="text-gray-600">{percentage.toFixed(1)}%</span>
-      </div>
-      <div className="w-full bg-gray-200 rounded-full h-3">
-        <div 
-          className={`h-3 rounded-full transition-all duration-300 ${getColor()}`}
-          style={{ width: `${Math.min(percentage, 100)}%` }}
-        ></div>
-      </div>
-      <div className="flex justify-between text-xs text-gray-600">
-        <span>
-          {isSavings ? '貯金' : '支出'}: ¥{used.toLocaleString()}
-        </span>
-        <span>{getStatusText()}</span>
-      </div>
-    </div>
-  );
-}
+import PieChart from "@/components/home/PieChart";
+import MonthSelector from "@/components/home/MonthSelector";
+import MonthSummary from "@/components/home/MonthSummary";
+import BudgetProgress from "@/components/home/BudgetProgress";
+import TransactionList from "@/components/home/TransactionList";
+import TransactionModal from "@/components/home/TransactionModal";
+import { generateExpenseByTag } from "@/utils/chartHelpers";
+import { Transaction, TransactionInput } from "@/types/transaction";
 
 export default function Home() {
-  const { 
+  const {
     user,
-    userProfile, 
     userFinance,
-    transactions, 
-    loading, 
-    refreshAll, 
+    transactions,
+    loading,
+    refreshAll,
     addTransaction,
     getMonthlyStats,
     fetchTransactions
   } = useUser();
 
-  // 収支入力モーダルの状態
+  // 状態管理
   const [showInputModal, setShowInputModal] = useState(false);
-  const [inputType, setInputType] = useState<'income' | 'expense'>('expense');
-  const [inputTitle, setInputTitle] = useState('');
-  const [inputDescription, setInputDescription] = useState('');
-  const [inputAmount, setInputAmount] = useState('');
-  const [inputTag, setInputTag] = useState('');
-  const [inputDate, setInputDate] = useState(new Date().toISOString().split('T')[0]);
   const [saving, setSaving] = useState(false);
   const [message, setMessage] = useState('');
-
-  // 新しいstate
   const [activeTab, setActiveTab] = useState<'expense' | 'income'>('expense');
   const [selectedTag, setSelectedTag] = useState<string>('all');
   const [selectedYear, setSelectedYear] = useState(new Date().getFullYear());
   const [selectedMonth, setSelectedMonth] = useState(new Date().getMonth() + 1);
 
-  const tags = [
-    '食費', '日用品', '交通費', '娯楽', '衣服', '医療', '住居', '水道光熱費', '通信費', '教育', '給料', 'その他'
-  ];
-
-  // 選択された月の統計を取得
-  const monthlyStats = transactions.length > 0 
+  // 月別統計データ
+  const monthlyStats = transactions.length > 0
     ? getMonthlyStats(selectedYear, selectedMonth)
     : { income: 0, expense: 0, balance: 0 };
 
@@ -238,7 +44,6 @@ export default function Home() {
     const endDate = new Date(selectedYear, selectedMonth, 0, 23, 59, 59);
 
     return transactions.filter(transaction => {
-      // dateカラムが存在しない場合はcreated_atを使用
       const dateToUse = transaction.date || transaction.created_at;
       const transactionDate = new Date(dateToUse);
       return transactionDate >= startDate && transactionDate <= endDate;
@@ -246,32 +51,14 @@ export default function Home() {
   }, [transactions, selectedYear, selectedMonth]);
 
   // 支出タグごとの集計データ
-  const expenseByTag = useMemo(() => {
-    const expenseTransactions = currentMonthTransactions.filter(t => !t.is_income);
-    const tagTotals: { [key: string]: number } = {};
-
-    expenseTransactions.forEach(transaction => {
-      tagTotals[transaction.tag] = (tagTotals[transaction.tag] || 0) + transaction.amount;
-    });
-
-    const colors = [
-      '#3b82f6', '#ef4444', '#10b981', '#f59e0b', '#8b5cf6',
-      '#06b6d4', '#84cc16', '#f97316', '#ec4899', '#6b7280',
-      '#14b8a6', '#f97316', '#a855f7', '#22c55e'
-    ];
-
-    return Object.entries(tagTotals)
-      .map(([tag, amount], index) => ({
-        label: tag,
-        value: amount,
-        color: colors[index % colors.length]
-      }))
-      .sort((a, b) => b.value - a.value);
-  }, [currentMonthTransactions]);
+  const expenseByTag = useMemo(() =>
+    generateExpenseByTag(currentMonthTransactions),
+    [currentMonthTransactions]
+  );
 
   // タグフィルタリングされた取引
   const filteredTransactions = useMemo(() => {
-    let filtered = currentMonthTransactions.filter(t => 
+    let filtered = currentMonthTransactions.filter(t =>
       activeTab === 'expense' ? !t.is_income : t.is_income
     );
 
@@ -280,7 +67,6 @@ export default function Home() {
     }
 
     return filtered.sort((a, b) => {
-      // dateカラムが存在しない場合はcreated_atを使用
       const dateA = a.date || a.created_at;
       const dateB = b.date || b.created_at;
       return new Date(dateB).getTime() - new Date(dateA).getTime();
@@ -297,47 +83,25 @@ export default function Home() {
     return tagsInTransactions.sort();
   }, [currentMonthTransactions, activeTab]);
 
-  // 月変更時のデータ取得
+  // 月変更ハンドラ
   const handleMonthChange = async (year: number, month: number) => {
     setSelectedYear(year);
     setSelectedMonth(month);
     await fetchTransactions(year, month);
   };
 
-  const handleInputSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
-
-    if (!inputTitle.trim() || !inputTag || !inputAmount || Number(inputAmount) <= 0) {
-      return;
-    }
-
+  // 取引追加ハンドラ
+  const handleTransactionSubmit = async (data: TransactionInput) => {
     setSaving(true);
     setMessage('');
 
     try {
-      const newTransaction = await addTransaction({
-        title: inputTitle,
-        description: inputDescription,
-        amount: Number(inputAmount),
-        tag: inputTag,
-        is_income: inputType === 'income',
-        date: inputDate
-      });
+      const newTransaction = await addTransaction(data);
 
       if (newTransaction) {
-        setShowInputModal(false);        
+        setShowInputModal(false);
         setMessage('収支を追加しました');
-        // フォームをリセット
-        setInputTitle('');
-        setInputDescription('');
-        setInputAmount('');
-        setInputTag('');
-        setInputDate(new Date().toISOString().split('T')[0]);
-        setInputType('expense');
-        
-        // 現在選択されている月のデータを再取得
         await fetchTransactions(selectedYear, selectedMonth);
-        
         setTimeout(() => setMessage(''), 3000);
       } else {
         setMessage('追加に失敗しました。もう一度お試しください。');
@@ -350,32 +114,32 @@ export default function Home() {
     }
   };
 
-  const handleCancelInput = () => {
-    setShowInputModal(false);
-    setInputTitle('');
-    setInputDescription('');
-    setInputAmount('');
-    setInputTag('');
-    setInputDate(new Date().toISOString().split('T')[0]);
-    setInputType('expense');
-    setMessage('');
+  // タブ変更ハンドラ
+  const handleTabChange = (tab: 'expense' | 'income') => {
+    setActiveTab(tab);
+    setSelectedTag('all');
   };
 
-  // UserContextのデータ初期化を待つ
+  useEffect(() => {
+    // 全データ取得
+    if (user) {
+      fetchTransactions();
+    }
+  },[user])
+
+  // データ初期化監視
   useEffect(() => {
     let timeoutId: NodeJS.Timeout;
-    
-    // 長時間のローディングを防ぐためのタイムアウト
+
     if (loading) {
       timeoutId = setTimeout(() => {
         console.warn('ローディングが長時間続いています。強制的に終了します。');
-        // 強制的にローディングを終了（最後の手段）
         if (user) {
           refreshAll();
         }
       }, 10000); // 10秒でタイムアウト
     }
-    
+
     return () => {
       if (timeoutId) {
         clearTimeout(timeoutId);
@@ -386,7 +150,7 @@ export default function Home() {
   if (loading) {
     return (
       <div className="flex items-center justify-center min-h-[400px]">
-        <LoadingWithReload 
+        <LoadingWithReload
           message="ダッシュボードデータを読み込み中..."
           onReload={refreshAll}
         />
@@ -398,88 +162,31 @@ export default function Home() {
     <div className="space-y-4 sm:space-y-6 pb-20">
       {/* メッセージ表示 */}
       {message && (
-        <div className={`p-3 rounded-md text-sm ${
-          message.includes('失敗') 
-            ? 'bg-red-50 text-red-700 border border-red-200' 
+        <div className={`p-3 rounded-md text-sm ${message.includes('失敗')
+            ? 'bg-red-50 text-red-700 border border-red-200'
             : 'bg-green-50 text-green-700 border border-green-200'
-        }`}>
+          }`}>
           {message}
         </div>
       )}
 
       {/* 月選択 */}
-      <div className="bg-white p-4 rounded-lg shadow-md">
-        <div className="flex items-center justify-between">
-          <h2 className="text-lg font-semibold">月選択</h2>
-          <div className="flex items-center gap-2">
-            <select
-              value={selectedYear}
-              onChange={async (e) => {
-                const year = Number(e.target.value);
-                await handleMonthChange(year, selectedMonth);
-              }}
-              className="px-3 py-2 border border-gray-300 rounded-md text-sm"
-            >
-              {Array.from({ length: 5 }, (_, i) => {
-                const year = new Date().getFullYear() - 2 + i;
-                return (
-                  <option key={year} value={year}>
-                    {year}年
-                  </option>
-                );
-              })}
-            </select>
-            <select
-              value={selectedMonth}
-              onChange={async (e) => {
-                const month = Number(e.target.value);
-                await handleMonthChange(selectedYear, month);
-              }}
-              className="px-3 py-2 border border-gray-300 rounded-md text-sm"
-            >
-              {Array.from({ length: 12 }, (_, i) => (
-                <option key={i + 1} value={i + 1}>
-                  {i + 1}月
-                </option>
-              ))}
-            </select>
-            <button
-              onClick={async () => {
-                const now = new Date();
-                await handleMonthChange(now.getFullYear(), now.getMonth() + 1);
-              }}
-              className="px-3 py-2 bg-blue-500 text-white rounded-md text-sm hover:bg-blue-600"
-            >
-              今月
-            </button>
-          </div>
-        </div>
-      </div>
-      
+      <MonthSelector
+        selectedYear={selectedYear}
+        selectedMonth={selectedMonth}
+        onMonthChange={handleMonthChange}
+      />
+
       <div className="grid grid-cols-1 md:grid-cols-2 gap-4 sm:gap-6 mt-3">
-        <div className="bg-white p-4 sm:p-6 rounded-lg shadow-md">
-          <h2 className="text-lg sm:text-xl font-semibold mb-3 sm:mb-4">{selectedYear}年{selectedMonth}月の収支</h2>
-          <div className="flex justify-between">
-            <div>
-              <p className="text-xs sm:text-sm text-gray-500">収入</p>
-              <p className="text-base sm:text-lg font-bold text-green-600">¥{monthlyStats.income.toLocaleString()}</p>
-            </div>
-            <div>
-              <p className="text-xs sm:text-sm text-gray-500">支出</p>
-              <p className="text-base sm:text-lg font-bold text-red-600">¥{monthlyStats.expense.toLocaleString()}</p>
-            </div>
-            <div>
-              <p className="text-xs sm:text-sm text-gray-500">残高</p>
-              <p className={`text-base sm:text-lg font-bold ${monthlyStats.balance >= 0 ? 'text-green-600' : 'text-red-600'}`}>
-                ¥{monthlyStats.balance.toLocaleString()}
-              </p>
-            </div>
-          </div>
-          <div className="mt-2 text-xs text-gray-400">
-            取引件数: {transactions.length}件
-          </div>
-        </div>
-        
+        {/* 月次収支概要 */}
+        <MonthSummary
+          year={selectedYear}
+          month={selectedMonth}
+          stats={monthlyStats}
+          transactionCount={transactions.length}
+        />
+
+        {/* 支出内訳 */}
         <div className="bg-white p-4 sm:p-6 rounded-lg shadow-md">
           <h2 className="text-lg sm:text-xl font-semibold mb-3 sm:mb-4">支出の内訳</h2>
           <PieChart data={expenseByTag} />
@@ -487,142 +194,24 @@ export default function Home() {
       </div>
 
       {/* 予算使用率セクション */}
-      {userFinance && (
-        <div className="bg-white p-4 sm:p-6 rounded-lg shadow-md">
-          <h2 className="text-lg sm:text-xl font-semibold mb-4">予算・目標の進捗</h2>
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-            <BudgetProgressChart 
-              used={expenseByTag.find(item => item.label === '食費')?.value || 0}
-              budget={userFinance.food}
-              label="食費"
-            />
-            <BudgetProgressChart 
-              used={expenseByTag.find(item => item.label === '娯楽')?.value || 0}
-              budget={userFinance.entertainment}
-              label="娯楽"
-            />
-            <BudgetProgressChart 
-              used={expenseByTag.find(item => item.label === '衣服')?.value || 0}
-              budget={userFinance.clothing}
-              label="衣服"
-            />
-            <BudgetProgressChart 
-              used={expenseByTag.find(item => item.label === '日用品')?.value || 0}
-              budget={userFinance.daily_goods}
-              label="日用品"
-            />
-            <BudgetProgressChart 
-              used={expenseByTag.filter(item => !['食費', '娯楽', '衣服', '日用品'].includes(item.label)).reduce((sum, item) => sum + item.value, 0)}
-              budget={userFinance.other}
-              label="その他"
-            />
-            <BudgetProgressChart 
-              used={Math.max(monthlyStats.balance, 0)}
-              budget={userFinance.savings_goal}
-              label="貯金目標"
-              isSavings={true}
-            />
-          </div>
-        </div>
-      )}        <div className="bg-white p-4 sm:p-6 rounded-lg shadow-md">
-          <div className="flex justify-between items-center mb-4">
-            <h2 className="text-lg sm:text-xl font-semibold">{selectedYear}年{selectedMonth}月の取引</h2>
-          
-          {/* タブ切り替え */}
-          <div className="flex gap-2">
-            <button
-              onClick={() => {
-                setActiveTab('expense');
-                setSelectedTag('all');
-              }}
-              className={`px-3 py-1 rounded text-sm ${
-                activeTab === 'expense' ? 'bg-red-500 text-white' : 'bg-gray-200'
-              }`}
-            >
-              支出
-            </button>
-            <button
-              onClick={() => {
-                setActiveTab('income');
-                setSelectedTag('all');
-              }}
-              className={`px-3 py-1 rounded text-sm ${
-                activeTab === 'income' ? 'bg-green-500 text-white' : 'bg-gray-200'
-              }`}
-            >
-              収入
-            </button>
-          </div>
-        </div>
+      <BudgetProgress
+        userFinance={userFinance}
+        expenseByTag={expenseByTag}
+        monthlyStats={monthlyStats}
+      />
 
-        {/* タグフィルター */}
-        {availableTags.length > 0 && (
-          <div className="mb-4">
-            <select
-              value={selectedTag}
-              onChange={(e) => setSelectedTag(e.target.value)}
-              className="px-3 py-2 border border-gray-300 rounded-md text-sm"
-            >
-              <option value="all">すべてのタグ</option>
-              {availableTags.map(tag => (
-                <option key={tag} value={tag}>{tag}</option>
-              ))}
-            </select>
-          </div>
-        )}
-
-        <div className="overflow-x-auto -mx-4 sm:mx-0">
-          <table className="min-w-full divide-y divide-gray-200">
-            <thead>
-              <tr>
-                <th className="px-3 py-2 sm:px-6 sm:py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">日付</th>
-                <th className="px-3 py-2 sm:px-6 sm:py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">タイトル</th>
-                <th className="px-3 py-2 sm:px-6 sm:py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">タグ</th>
-                <th className="px-3 py-2 sm:px-6 sm:py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">金額</th>
-              </tr>
-            </thead>
-            <tbody className="bg-white divide-y divide-gray-200">
-              {filteredTransactions.length === 0 ? (
-                <tr>
-                  <td className="px-3 py-4 sm:px-6 sm:py-4 whitespace-nowrap text-xs sm:text-sm text-gray-500" colSpan={4}>
-                    {loading ? '読み込み中...' : `${activeTab === 'expense' ? '支出' : '収入'}データがありません`}
-                  </td>
-                </tr>
-              ) : (
-                filteredTransactions.map((transaction) => (
-                  <tr key={transaction.id}>
-                    <td className="px-3 py-2 sm:px-6 sm:py-4 whitespace-nowrap text-xs sm:text-sm text-gray-500">
-                      {new Date(transaction.date || transaction.created_at).toLocaleDateString('ja-JP')}
-                    </td>
-                    <td className="px-3 py-2 sm:px-6 sm:py-4 whitespace-nowrap text-xs sm:text-sm text-gray-900">
-                      {transaction.title}
-                      {transaction.description && (
-                        <div className="text-xs text-gray-500 mt-1">{transaction.description}</div>
-                      )}
-                    </td>
-                    <td className="px-3 py-2 sm:px-6 sm:py-4 whitespace-nowrap">
-                      <span className="px-2 py-1 text-xs rounded-full bg-blue-100 text-blue-800">
-                        {transaction.tag}
-                      </span>
-                    </td>
-                    <td className="px-3 py-2 sm:px-6 sm:py-4 whitespace-nowrap text-xs sm:text-sm">
-                      <span className={transaction.is_income ? 'text-green-600 font-medium' : 'text-red-600 font-medium'}>
-                        {transaction.is_income ? '+' : '-'}¥{transaction.amount.toLocaleString()}
-                      </span>
-                    </td>
-                  </tr>
-                ))
-              )}
-            </tbody>
-          </table>
-        </div>
-
-        {filteredTransactions.length > 0 && (
-          <div className="mt-4 text-sm text-gray-500 text-center">
-            {filteredTransactions.length}件の取引を表示
-          </div>
-        )}
-      </div>
+      {/* 取引一覧 */}
+      <TransactionList
+        year={selectedYear}
+        month={selectedMonth}
+        transactions={filteredTransactions}
+        activeTab={activeTab}
+        selectedTag={selectedTag}
+        availableTags={availableTags}
+        loading={loading}
+        onTabChange={handleTabChange}
+        onTagChange={setSelectedTag}
+      />
 
       {/* 浮動追加ボタン */}
       <button
@@ -635,140 +224,12 @@ export default function Home() {
       </button>
 
       {/* 収支入力モーダル */}
-      {showInputModal && (
-        <div className="fixed inset-0 bg-black/50 bg-opacity-50 flex items-center justify-center z-30 p-4">
-          <div className="bg-white w-full max-w-md rounded-lg shadow-xl max-h-[90vh] overflow-y-auto">
-            <div className="p-4 border-b border-gray-200">
-              <div className="flex items-center justify-between">
-                <h2 className="text-lg font-semibold">収支を追加</h2>
-                <button
-                  onClick={handleCancelInput}
-                  className="p-2 hover:bg-gray-100 rounded-md"
-                >
-                  <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
-                  </svg>
-                </button>
-              </div>
-            </div>
-
-            <form onSubmit={handleInputSubmit} className="p-4 space-y-4">
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">種類</label>
-                <div className="flex gap-3">
-                  <button
-                    type="button"
-                    onClick={() => setInputType('income')}
-                    className={`flex-1 px-4 py-2 rounded-md text-sm ${
-                      inputType === 'income' ? 'bg-green-500 text-white' : 'bg-gray-200'
-                    }`}
-                  >
-                    収入
-                  </button>
-                  <button
-                    type="button"
-                    onClick={() => setInputType('expense')}
-                    className={`flex-1 px-4 py-2 rounded-md text-sm ${
-                      inputType === 'expense' ? 'bg-red-500 text-white' : 'bg-gray-200'
-                    }`}
-                  >
-                    支出
-                  </button>
-                </div>
-              </div>
-
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">タイトル</label>
-                <input
-                  type="text"
-                  value={inputTitle}
-                  onChange={(e) => setInputTitle(e.target.value)}
-                  className="w-full p-3 border border-gray-300 rounded-md text-sm"
-                  placeholder="例: 昼食、電車代"
-                  required
-                />
-              </div>
-
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">説明（任意）</label>
-                <input
-                  type="text"
-                  value={inputDescription}
-                  onChange={(e) => setInputDescription(e.target.value)}
-                  className="w-full p-3 border border-gray-300 rounded-md text-sm"
-                  placeholder="詳細な説明"
-                />
-              </div>
-
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">タグ</label>
-                <select
-                  value={inputTag}
-                  onChange={(e) => setInputTag(e.target.value)}
-                  className="w-full p-3 border border-gray-300 rounded-md text-sm"
-                  required
-                >
-                  <option value="">タグを選択</option>
-                  {tags.map((tag) => (
-                    <option key={tag} value={tag}>{tag}</option>
-                  ))}
-                </select>
-              </div>
-
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">日付</label>
-                <input
-                  type="date"
-                  value={inputDate}
-                  onChange={(e) => setInputDate(e.target.value)}
-                  className="w-full p-3 border border-gray-300 rounded-md text-sm"
-                  required
-                />
-              </div>
-
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">金額</label>
-                <div className="relative">
-                  <span className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none text-gray-500">
-                    ¥
-                  </span>
-                  <input
-                    type="number"
-                    inputMode="numeric"
-                    value={inputAmount}
-                    onChange={(e) => setInputAmount(e.target.value)}
-                    className="w-full pl-8 p-3 border border-gray-300 rounded-md text-sm"
-                    placeholder="0"
-                    min="0"
-                    required
-                  />
-                </div>
-              </div>
-
-              <div className="flex gap-2 pt-4">
-                <button
-                  type="button"
-                  onClick={handleCancelInput}
-                  className="flex-1 py-3 px-4 rounded-md font-medium text-sm bg-gray-300 text-gray-800 hover:bg-gray-400"
-                >
-                  キャンセル
-                </button>
-                <button
-                  type="submit"
-                  disabled={saving}
-                  className={`flex-1 py-3 px-4 rounded-md font-medium text-sm ${
-                    saving
-                      ? 'bg-gray-400 text-gray-600 cursor-not-allowed'
-                      : 'bg-blue-600 text-white hover:bg-blue-700'
-                  }`}
-                >
-                  {saving ? '保存中...' : '保存'}
-                </button>
-              </div>
-            </form>
-          </div>
-        </div>
-      )}
+      <TransactionModal
+        isOpen={showInputModal}
+        onClose={() => setShowInputModal(false)}
+        onSubmit={handleTransactionSubmit}
+        saving={saving}
+      />
     </div>
   );
 }

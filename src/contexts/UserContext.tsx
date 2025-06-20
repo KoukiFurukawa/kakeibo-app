@@ -3,55 +3,7 @@
 import React, { createContext, useContext, useState, useEffect, ReactNode } from 'react';
 import { User } from '@supabase/supabase-js';
 import { supabase } from '@/utils/manage_supabase';
-
-interface UserProfile {
-    id: string;
-    email: string;
-    username: string | null;
-    target_month_savings?: number;
-    notifications?: boolean;
-    created_at?: string;
-    updated_at?: string;
-}
-
-interface UserNotificationSettings {
-    id: string;
-    todo: boolean;
-    system: boolean;
-    event: boolean;
-    created_at?: string;
-}
-
-interface UserFinance {
-    savings_goal: number;
-    food: number;
-    entertainment: number;
-    clothing: number;
-    daily_goods: number;
-    other: number;
-}
-
-interface FixedCost {
-    id: string;
-    created_by?: string;
-    title: string;
-    cost: number;
-    tag: string;
-    debit_date: number;
-    created_at?: string;
-}
-
-interface UserTransaction {
-    id: string;
-    created_by: string;
-    title: string;
-    description: string;
-    amount: number;
-    tag: string;
-    is_income: boolean;
-    date: string;
-    created_at: string;
-}
+import { UserProfile, UserNotificationSettings, UserFinance, FixedCost, UserTransaction } from '@/types/user';
 
 interface UserContextType {
     user: User | null;
@@ -71,7 +23,8 @@ interface UserContextType {
     fetchFixedCosts: () => Promise<void>;
     addFixedCost: (fixedCost: Omit<FixedCost, 'id' | 'created_by' | 'created_at'>) => Promise<FixedCost | null>;
     updateFixedCost: (id: string, fixedCost: Partial<FixedCost>) => Promise<boolean>;
-    deleteFixedCost: (id: string) => Promise<boolean>;    fetchTransactions: (year?: number, month?: number) => Promise<void>;
+    deleteFixedCost: (id: string) => Promise<boolean>;
+    fetchTransactions: (year?: number, month?: number) => Promise<void>;
     addTransaction: (transaction: Omit<UserTransaction, 'id' | 'created_by' | 'created_at'>) => Promise<UserTransaction | null>;
     updateTransaction: (id: string, transaction: Partial<UserTransaction>) => Promise<boolean>;
     deleteTransaction: (id: string) => Promise<boolean>;
@@ -87,39 +40,38 @@ export function UserProvider({ children }: { children: ReactNode }) {
     const [userFinance, setUserFinance] = useState<UserFinance | null>(null);
     const [fixedCosts, setFixedCosts] = useState<FixedCost[]>([]);
     const [transactions, setTransactions] = useState<UserTransaction[]>([]);
-    const [loading, setLoading] = useState(true);    // リトライ用のヘルパー関数
-    const retryWithBackoff = async <T,>(
-        fn: () => Promise<T>,
-        maxRetries: number = 3,
-        baseDelay: number = 1000
-    ): Promise<T | null> => {
-        for (let attempt = 0; attempt <= maxRetries; attempt++) {
-            try {
-                return await fn();
-            } catch (error: any) {
-                if (attempt === maxRetries) {
-                    console.error(`最大リトライ回数(${maxRetries})に達しました:`, error);
-                    return null;
-                }
-                
-                // 認証エラーの場合は即座に再試行せずにセッションを更新
-                if (error?.message?.includes('JWT') || error?.message?.includes('token') || error?.code === 'PGRST301') {
-                    console.warn('認証トークンエラーを検出、セッションを更新します:', error);
-                    try {
-                        await supabase.auth.getSession();
-                        // 短い待機時間でリトライ
-                        await new Promise(resolve => setTimeout(resolve, 500));
-                    } catch (sessionError) {
-                        console.error('セッション更新エラー:', sessionError);
-                    }
-                } else {
-                    const delay = baseDelay * Math.pow(2, attempt);
-                    console.warn(`取得に失敗しました。${delay}ms後にリトライします (${attempt + 1}/${maxRetries}):`, error);
-                    await new Promise(resolve => setTimeout(resolve, delay));
-                }
+    const [loading, setLoading] = useState(true);
+    const [sessionCheckInterval, setSessionCheckInterval] = useState<NodeJS.Timeout | null>(null);
+
+    // リトライ用のヘルパー関数
+
+    // セッションの有効性を検証する関数
+    const validateSession = async (): Promise<boolean> => {
+        try {
+            const { data: { session } } = await supabase.auth.getSession();
+            if (!session) {
+                console.warn('セッションが無効です。再認証が必要です。');
+                return false;
             }
+
+            console.log('セッションが有効です:', session.user.id);
+            
+            // セッションはあるがJWTの有効期限が近い場合は更新
+            const tokenExpirationTime = new Date((session.access_token.split('.')[1] || '') as any).getTime();
+            const currentTime = Date.now();
+            const timeToExpire = tokenExpirationTime - currentTime;
+            
+            // 5分以内に期限切れになる場合は更新
+            if (timeToExpire < 5 * 60 * 1000) {
+                console.log('トークンの期限が近いので更新します');
+                await supabase.auth.refreshSession();
+            }
+            
+            return true;
+        } catch (error) {
+            console.error('セッション検証エラー:', error);
+            return false;
         }
-        return null;
     };
 
     // ユーザープロフィールを取得する関数
@@ -143,7 +95,7 @@ export function UserProvider({ children }: { children: ReactNode }) {
     const updateUserProfile = async (updates: Partial<UserProfile>): Promise<boolean> => {
         if (!user) return false;
 
-        try {
+        const result = await retryWithBackoff(async () => {
             const { data, error } = await supabase
                 .from('users')
                 .update({
@@ -155,13 +107,14 @@ export function UserProvider({ children }: { children: ReactNode }) {
                 .single();
 
             if (error) throw error;
+            return data;
+        });
 
-            setUserProfile(data);
+        if (result) {
+            setUserProfile(result);
             return true;
-        } catch (error) {
-            console.error('ユーザープロフィール更新エラー:', error);
-            return false;
         }
+        return false;
     };
 
     // ユーザープロフィールを再取得する関数
@@ -192,7 +145,7 @@ export function UserProvider({ children }: { children: ReactNode }) {
     const updateNotificationSettings = async (updates: Partial<UserNotificationSettings>): Promise<boolean> => {
         if (!user) return false;
 
-        try {
+        const result = await retryWithBackoff(async () => {
             const { data, error } = await supabase
                 .from('notification_settings')
                 .update(updates)
@@ -201,13 +154,14 @@ export function UserProvider({ children }: { children: ReactNode }) {
                 .single();
 
             if (error) throw error;
+            return data;
+        });
 
-            setNotificationSettings(data);
+        if (result) {
+            setNotificationSettings(result);
             return true;
-        } catch (error) {
-            console.error('通知設定更新エラー:', error);
-            return false;
         }
+        return false;
     };
 
     // 通知設定を再取得する関数
@@ -238,7 +192,7 @@ export function UserProvider({ children }: { children: ReactNode }) {
     const updateUserFinance = async (updates: Partial<UserFinance>): Promise<boolean> => {
         if (!user) return false;
 
-        try {
+        const result = await retryWithBackoff(async () => {
             const { data, error } = await supabase
                 .from('finance')
                 .update(updates)
@@ -247,13 +201,14 @@ export function UserProvider({ children }: { children: ReactNode }) {
                 .single();
 
             if (error) throw error;
+            return data;
+        });
 
-            setUserFinance(data);
+        if (result) {
+            setUserFinance(result);
             return true;
-        } catch (error) {
-            console.error('家計設定更新エラー:', error);
-            return false;
         }
+        return false;
     };
 
     // 家計設定を再取得する関数
@@ -267,7 +222,7 @@ export function UserProvider({ children }: { children: ReactNode }) {
     const fetchFixedCosts = async () => {
         if (!user) return;
 
-        try {
+        const result = await retryWithBackoff(async () => {
             const { data, error } = await supabase
                 .from('fixed_costs')
                 .select('*')
@@ -275,9 +230,11 @@ export function UserProvider({ children }: { children: ReactNode }) {
                 .order('created_at', { ascending: false });
 
             if (error) throw error;
-            setFixedCosts(data || []);
-        } catch (error) {
-            console.error('固定費取得エラー:', error);
+            return data || [];
+        });
+
+        if (result) {
+            setFixedCosts(result);
         }
     };
 
@@ -285,7 +242,7 @@ export function UserProvider({ children }: { children: ReactNode }) {
     const addFixedCost = async (fixedCostData: Omit<FixedCost, 'id' | 'created_by' | 'created_at'>): Promise<FixedCost | null> => {
         if (!user) return null;
 
-        try {
+        return retryWithBackoff(async () => {
             const { data, error } = await supabase
                 .from('fixed_costs')
                 .insert({
@@ -299,17 +256,14 @@ export function UserProvider({ children }: { children: ReactNode }) {
 
             setFixedCosts(prev => [data, ...prev]);
             return data;
-        } catch (error) {
-            console.error('固定費追加エラー:', error);
-            return null;
-        }
+        });
     };
 
     // 固定費を更新する関数
     const updateFixedCost = async (id: string, fixedCostData: Partial<FixedCost>): Promise<boolean> => {
         if (!user) return false;
 
-        try {
+        const result = await retryWithBackoff(async () => {
             const { error } = await supabase
                 .from('fixed_costs')
                 .update(fixedCostData)
@@ -317,22 +271,23 @@ export function UserProvider({ children }: { children: ReactNode }) {
                 .eq('created_by', user.id);
 
             if (error) throw error;
+            return true;
+        });
 
+        if (result) {
             setFixedCosts(prev => prev.map(cost =>
                 cost.id === id ? { ...cost, ...fixedCostData } : cost
             ));
             return true;
-        } catch (error) {
-            console.error('固定費更新エラー:', error);
-            return false;
         }
+        return false;
     };
 
     // 固定費を削除する関数
     const deleteFixedCost = async (id: string): Promise<boolean> => {
         if (!user) return false;
 
-        try {
+        const result = await retryWithBackoff(async () => {
             const { error } = await supabase
                 .from('fixed_costs')
                 .delete()
@@ -340,18 +295,21 @@ export function UserProvider({ children }: { children: ReactNode }) {
                 .eq('created_by', user.id);
 
             if (error) throw error;
+            return true;
+        });
 
+        if (result) {
             setFixedCosts(prev => prev.filter(cost => cost.id !== id));
             return true;
-        } catch (error) {
-            console.error('固定費削除エラー:', error);
-            return false;
         }
-    };    // 取引を取得する関数（月指定可能）
+        return false;
+    };
+    
+    // 取引を取得する関数（月指定可能）
     const fetchTransactions = async (year?: number, month?: number) => {
         if (!user) return;
 
-        try {
+        const result = await retryWithBackoff(async () => {
             let query = supabase
                 .from('transactions')
                 .select('*')
@@ -362,7 +320,6 @@ export function UserProvider({ children }: { children: ReactNode }) {
                 const startDate = new Date(year, month - 1, 1).toISOString().split('T')[0];
                 const endDate = new Date(year, month, 0).toISOString().split('T')[0];
                 
-                // dateカラムが存在する場合はそれを使用、存在しない場合はcreated_atを使用
                 try {
                     query = query
                         .gte('date', startDate)
@@ -380,9 +337,11 @@ export function UserProvider({ children }: { children: ReactNode }) {
             const { data, error } = await query.order('created_at', { ascending: false });
 
             if (error) throw error;
-            setTransactions(data || []);
-        } catch (error) {
-            console.error('取引取得エラー:', error);
+            return data || [];
+        });
+
+        if (result) {
+            setTransactions(result);
         }
     };
 
@@ -390,7 +349,7 @@ export function UserProvider({ children }: { children: ReactNode }) {
     const addTransaction = async (transactionData: Omit<UserTransaction, 'id' | 'created_by' | 'created_at'>): Promise<UserTransaction | null> => {
         if (!user) return null;
 
-        try {
+        return retryWithBackoff(async () => {
             const { data, error } = await supabase
                 .from('transactions')
                 .insert({
@@ -404,17 +363,14 @@ export function UserProvider({ children }: { children: ReactNode }) {
 
             setTransactions(prev => [data, ...prev]);
             return data;
-        } catch (error) {
-            console.error('取引追加エラー:', error);
-            return null;
-        }
+        });
     };
 
     // 取引を更新する関数
     const updateTransaction = async (id: string, transactionData: Partial<UserTransaction>): Promise<boolean> => {
         if (!user) return false;
 
-        try {
+        const result = await retryWithBackoff(async () => {
             const { error } = await supabase
                 .from('transactions')
                 .update(transactionData)
@@ -422,22 +378,23 @@ export function UserProvider({ children }: { children: ReactNode }) {
                 .eq('created_by', user.id);
 
             if (error) throw error;
+            return true;
+        });
 
+        if (result) {
             setTransactions(prev => prev.map(transaction =>
                 transaction.id === id ? { ...transaction, ...transactionData } : transaction
             ));
             return true;
-        } catch (error) {
-            console.error('取引更新エラー:', error);
-            return false;
         }
+        return false;
     };
 
     // 取引を削除する関数
     const deleteTransaction = async (id: string): Promise<boolean> => {
         if (!user) return false;
 
-        try {
+        const result = await retryWithBackoff(async () => {
             const { error } = await supabase
                 .from('transactions')
                 .delete()
@@ -445,14 +402,17 @@ export function UserProvider({ children }: { children: ReactNode }) {
                 .eq('created_by', user.id);
 
             if (error) throw error;
+            return true;
+        });
 
+        if (result) {
             setTransactions(prev => prev.filter(transaction => transaction.id !== id));
             return true;
-        } catch (error) {
-            console.error('取引削除エラー:', error);
-            return false;
         }
-    };    // 月次統計を取得する関数
+        return false;
+    };
+    
+    // 月次統計を取得する関数
     const getMonthlyStats = (year: number, month: number) => {
         const startDate = new Date(year, month - 1, 1);
         const endDate = new Date(year, month, 0, 23, 59, 59);
@@ -477,12 +437,17 @@ export function UserProvider({ children }: { children: ReactNode }) {
             expense,
             balance: income - expense
         };
-    };// 全データを再取得する関数
+    };
+    
+    // 全データを再取得する関数
     const refreshAll = async () => {
         if (!user) return;
         
         setLoading(true);
         try {
+            // 明示的にセッションを更新してからデータを再取得
+            await supabase.auth.getSession();
+            
             const currentDate = new Date();
             await Promise.all([
                 refreshUserProfile(),
@@ -496,144 +461,226 @@ export function UserProvider({ children }: { children: ReactNode }) {
         } finally {
             setLoading(false);
         }
-    };// 認証状態の監視とユーザープロフィールの取得
+    };
+    
+    // 認証状態の監視とユーザープロフィールの取得
     useEffect(() => {
         let isMounted = true;
-        let sessionCheckInterval: NodeJS.Timeout;
 
-        const getInitialData = async () => {
+        const getInitialSession = async () => {
             try {
                 // セッションの有効性を確認
                 const { data: { session }, error: sessionError } = await supabase.auth.getSession();
                 
                 if (sessionError) {
                     console.error('セッション取得エラー:', sessionError);
-                    setLoading(false);
+                    if (isMounted) setLoading(false);
                     return;
                 }
 
                 const currentUser = session?.user || null;
                 if (!isMounted) return;
                 
+                // ユーザー状態だけを更新し、データ取得はしない
                 setUser(currentUser);
-
-                if (currentUser) {
-                    // 並列でデータを取得してパフォーマンスを向上
-                    const [profile, settings, finance] = await Promise.all([
-                        fetchUserProfile(currentUser.id),
-                        fetchNotificationSettings(currentUser.id),
-                        fetchUserFinance(currentUser.id)
-                    ]);
-
-                    if (!isMounted) return;
-
-                    setUserProfile(profile);
-                    setNotificationSettings(settings);
-                    setUserFinance(finance);                    // 固定費と現在月の取引を並列で取得
-                    const currentDate = new Date();
-                    await Promise.all([
-                        fetchFixedCosts(),
-                        fetchTransactions(currentDate.getFullYear(), currentDate.getMonth() + 1)
-                    ]);
-                }
             } catch (error) {
-                console.error('初期データ取得エラー:', error);
-            } finally {
-                if (isMounted) {
-                    setLoading(false);
-                }
+                console.error('初期セッション取得エラー:', error);
+                if (isMounted) setLoading(false);
             }
         };
 
-        // セッションの定期チェック（5分ごと）
-        const startSessionCheck = () => {
-            sessionCheckInterval = setInterval(async () => {
-                try {
-                    const { data: { session } } = await supabase.auth.getSession();
-                    if (!session && user) {
-                        console.warn('セッションが期限切れです。再認証が必要です。');
-                        // セッションが無効な場合はユーザーをクリア
-                        setUser(null);
-                        setUserProfile(null);
-                        setNotificationSettings(null);
-                        setUserFinance(null);
-                        setFixedCosts([]);
-                        setTransactions([]);
-                    }
-                } catch (error) {
-                    console.error('セッションチェックエラー:', error);
-                }
-            }, 5 * 60 * 1000); // 5分
-        };
-
-        getInitialData();
+        getInitialSession();
 
         // 認証状態の変更を監視
         const { data: { subscription } } = supabase.auth.onAuthStateChange(
-            async (event, session) => {
+            (event, session) => {
                 console.log('Auth state changed:', event, session?.user?.id);
                 
                 if (!isMounted) return;
                 
+                // ユーザー状態の更新のみを行う（データ取得は別のuseEffectで実施）
                 setUser(session?.user ?? null);
-
-                if (session?.user) {
-                    // ログイン時またはセッション更新時
-                    try {
-                        const [profile, settings, finance] = await Promise.all([
-                            fetchUserProfile(session.user.id),
-                            fetchNotificationSettings(session.user.id),
-                            fetchUserFinance(session.user.id)
-                        ]);
-
-                        if (!isMounted) return;
-
-                        setUserProfile(profile);
-                        setNotificationSettings(settings);
-                        setUserFinance(finance);                        const currentDate = new Date();
-                        await Promise.all([
-                            fetchFixedCosts(),
-                            fetchTransactions(currentDate.getFullYear(), currentDate.getMonth() + 1)
-                        ]);
-
-                        // セッションチェックを開始
-                        startSessionCheck();
-                    } catch (error) {
-                        console.error('認証後のデータ取得エラー:', error);
-                    }
-                } else {
-                    // ログアウト時
-                    setUserProfile(null);
-                    setNotificationSettings(null);
-                    setUserFinance(null);
-                    setFixedCosts([]);
-                    setTransactions([]);
-                    
-                    // セッションチェックを停止
-                    if (sessionCheckInterval) {
-                        clearInterval(sessionCheckInterval);
-                    }
-                }
-                
-                if (isMounted) {
-                    setLoading(false);
-                }
             }
         );
-
-        // セッションチェックを開始
-        if (user) {
-            startSessionCheck();
-        }
 
         return () => {
             isMounted = false;
             subscription.unsubscribe();
             if (sessionCheckInterval) {
                 clearInterval(sessionCheckInterval);
+                setSessionCheckInterval(null);
             }
         };
     }, []);
+
+    // ユーザー状態の変更を監視して必要なデータを取得
+    useEffect(() => {
+        let isMounted = true;
+
+        const fetchUserData = async () => {
+            if (!user) {
+                // ユーザーがnullの場合はデータをクリア
+                setUserProfile(null);
+                setNotificationSettings(null);
+                setUserFinance(null);
+                setFixedCosts([]);
+                setTransactions([]);
+                
+                // セッションチェックを停止
+                if (sessionCheckInterval) {
+                    clearInterval(sessionCheckInterval);
+                    setSessionCheckInterval(null);
+                }
+                
+                setLoading(false);
+                return;
+            }
+            
+            setLoading(true);
+            try {
+                // 並列でデータを取得してパフォーマンスを向上
+                const [profile, settings, finance] = await Promise.all([
+                    fetchUserProfile(user.id),
+                    fetchNotificationSettings(user.id),
+                    fetchUserFinance(user.id)
+                ]);
+
+                if (!isMounted) return;
+
+                setUserProfile(profile);
+                setNotificationSettings(settings);
+                setUserFinance(finance);
+                
+                // 固定費と現在月の取引を並列で取得
+                const currentDate = new Date();
+                await Promise.all([
+                    fetchFixedCosts(),
+                    fetchTransactions(currentDate.getFullYear(), currentDate.getMonth() + 1)
+                ]);
+                
+                // ユーザーデータ取得後にセッションチェックを開始
+                startSessionCheck();
+            } catch (error) {
+                console.error('ユーザーデータ取得エラー:', error);
+            } finally {
+                if (isMounted) {
+                    setLoading(false);
+                }
+            }
+        };
+        
+        fetchUserData();
+        
+        return () => {
+            isMounted = false;
+        };
+    }, [user]); // userが変更されたときにデータを再取得
+
+    // セッションの定期チェック（5分ごと）
+    const startSessionCheck = () => {
+        // 既存のインターバルをクリア
+        if (sessionCheckInterval) {
+            clearInterval(sessionCheckInterval);
+        }
+        
+        const interval = setInterval(async () => {
+            try {
+                const isValid = await validateSession();
+                if (!isValid && user) {
+                    console.warn('セッションが期限切れです。再認証が必要です。');
+                    // セッションが無効な場合はユーザーをクリアし、イベントを発行
+                    setUser(null);
+                    
+                    // セッション期限切れイベントを発行（任意のイベント管理システムを使用）
+                    // 例: EventEmitter、カスタムイベント、通知コンテキストなど
+                    window.dispatchEvent(new CustomEvent('sessionExpired', {
+                        detail: { message: 'セッションの期限が切れました。再ログインしてください。' }
+                    }));
+                }
+            } catch (error) {
+                console.error('セッションチェックエラー:', error);
+            }
+        }, 5 * 60 * 1000); // 5分
+        
+        setSessionCheckInterval(interval);
+    };
+
+    // retryWithBackoff関数を強化
+    const retryWithBackoff = async <T,>(
+        fn: () => Promise<T>,
+        maxRetries: number = 3,
+        baseDelay: number = 1000
+    ): Promise<T | null> => {
+        // 現在のユーザーが存在しない場合は早期リターン
+        if (!user) {
+            console.warn('ユーザーがログインしていません。操作をスキップします。');
+            return null;
+        }
+        
+        // 操作前にセッションを事前検証
+        let isSessionValid = await validateSession();
+        if (!isSessionValid) {
+            console.warn('無効なセッションを検出。セッションの更新を試みます。');
+            
+            try {
+                const { data } = await supabase.auth.refreshSession();
+                if (data.session) {
+                    console.log('セッションの更新に成功しました。操作を継続します。');
+                    // セッションの更新に成功したら操作を続行
+                    isSessionValid = true;
+                } else {
+                    console.warn('セッション更新失敗。操作をスキップします。');
+                    return null;
+                }
+            } catch (error) {
+                console.error('セッション更新エラー:', error);
+                return null;
+            }
+        }
+        
+        for (let attempt = 0; attempt <= maxRetries; attempt++) {
+            try {
+                return await fn();
+            } catch (error: any) {
+                if (attempt === maxRetries) {
+                    console.error(`最大リトライ回数(${maxRetries})に達しました:`, error);
+                    return null;
+                }
+                
+                // 認証エラーの場合は即座に再試行せずにセッションを更新
+                if (error?.message?.includes('JWT') || error?.message?.includes('token') || error?.code === 'PGRST301') {
+                    console.warn('認証トークンエラーを検出、セッションを更新します:', error);
+                    try {
+                        // セッションの更新を試みる
+                        const { data } = await supabase.auth.refreshSession();
+                        
+                        // セッション更新に失敗した場合（リフレッシュトークンも期限切れの場合）
+                        if (!data.session) {
+                            console.error('セッションを更新できませんでした。再ログインが必要です。');
+                            // ユーザー状態をリセット
+                            setUser(null);
+                            setUserProfile(null);
+                            setNotificationSettings(null);
+                            setUserFinance(null);
+                            setFixedCosts([]);
+                            setTransactions([]);
+                            return null;
+                        }
+                        
+                        // 短い待機時間でリトライ
+                        await new Promise(resolve => setTimeout(resolve, 500));
+                    } catch (sessionError) {
+                        console.error('セッション更新エラー:', sessionError);
+                    }
+                } else {
+                    const delay = baseDelay * Math.pow(2, attempt);
+                    console.warn(`取得に失敗しました。${delay}ms後にリトライします (${attempt + 1}/${maxRetries}):`, error);
+                    await new Promise(resolve => setTimeout(resolve, delay));
+                }
+            }
+        }
+        return null;
+    };
 
     const value: UserContextType = {
         user,
