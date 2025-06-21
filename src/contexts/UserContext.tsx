@@ -3,7 +3,7 @@
 import React, { createContext, useContext, useState, useEffect, ReactNode } from 'react';
 import { User } from '@supabase/supabase-js';
 import { supabase } from '@/utils/manage_supabase';
-import { UserProfile, UserNotificationSettings, UserFinance, FixedCost, UserTransaction } from '@/types/user';
+import { UserProfile, UserNotificationSettings, UserFinance, FixedCost, UserTransaction, UserGroup } from '@/types/user';
 
 interface UserContextType {
     user: User | null;
@@ -13,6 +13,7 @@ interface UserContextType {
     fixedCosts: FixedCost[];
     transactions: UserTransaction[];
     loading: boolean;
+    userGroup: UserGroup | null;
     refreshAll: () => Promise<void>;
     refreshUserProfile: () => Promise<void>;
     updateUserProfile: (updates: Partial<UserProfile>) => Promise<boolean>;
@@ -29,6 +30,9 @@ interface UserContextType {
     updateTransaction: (id: string, transaction: Partial<UserTransaction>) => Promise<boolean>;
     deleteTransaction: (id: string) => Promise<boolean>;
     getMonthlyStats: (year: number, month: number) => { income: number; expense: number; balance: number };
+    fetchUserGroup: () => Promise<void>;
+    createUserGroup: (groupData: Omit<UserGroup, 'id' | 'created_at'>) => Promise<UserGroup | null>;
+    leaveUserGroup: () => Promise<boolean>;
 }
 
 const UserContext = createContext<UserContextType | undefined>(undefined);
@@ -42,6 +46,7 @@ export function UserProvider({ children }: { children: ReactNode }) {
     const [transactions, setTransactions] = useState<UserTransaction[]>([]);
     const [loading, setLoading] = useState(true);
     const [sessionCheckInterval, setSessionCheckInterval] = useState<NodeJS.Timeout | null>(null);
+    const [userGroup, setUserGroup] = useState<UserGroup | null>(null);
 
     // リトライ用のヘルパー関数
 
@@ -454,7 +459,8 @@ export function UserProvider({ children }: { children: ReactNode }) {
                 refreshNotificationSettings(),
                 refreshUserFinance(),
                 fetchFixedCosts(),
-                fetchTransactions(currentDate.getFullYear(), currentDate.getMonth() + 1)
+                fetchTransactions(currentDate.getFullYear(), currentDate.getMonth() + 1),
+                fetchUserGroup()
             ]);
         } catch (error) {
             console.error('データ再取得エラー:', error);
@@ -525,6 +531,7 @@ export function UserProvider({ children }: { children: ReactNode }) {
                 setUserFinance(null);
                 setFixedCosts([]);
                 setTransactions([]);
+                setUserGroup(null);
                 
                 // セッションチェックを停止
                 if (sessionCheckInterval) {
@@ -551,11 +558,12 @@ export function UserProvider({ children }: { children: ReactNode }) {
                 setNotificationSettings(settings);
                 setUserFinance(finance);
                 
-                // 固定費と現在月の取引を並列で取得
+                // 固定費と現在月の取引とグループ情報を並列で取得
                 const currentDate = new Date();
                 await Promise.all([
                     fetchFixedCosts(),
-                    fetchTransactions(currentDate.getFullYear(), currentDate.getMonth() + 1)
+                    fetchTransactions(currentDate.getFullYear(), currentDate.getMonth() + 1),
+                    fetchUserGroup()
                 ]);
                 
                 // ユーザーデータ取得後にセッションチェックを開始
@@ -682,6 +690,130 @@ export function UserProvider({ children }: { children: ReactNode }) {
         return null;
     };
 
+    // ユーザーのグループ情報を取得する関数
+    const fetchUserGroup = async () => {
+        if (!user) return;
+
+        try {
+            // まずユーザープロフィールからgroup_idを取得
+            const { data: userData, error: userError } = await supabase
+                .from('users')
+                .select('group_id')
+                .eq('id', user.id)
+                .single();
+
+            if (userError) {
+                console.error('グループID取得エラー:', userError);
+                setUserGroup(null);
+                return;
+            }
+
+            // group_idがない場合は所属グループなし
+            if (!userData.group_id) {
+                setUserGroup(null);
+                return;
+            }
+
+            // group_idがある場合、グループ情報を取得
+            const { data: groupData, error: groupError } = await supabase
+                .from('groups')
+                .select('*')
+                .eq('id', userData.group_id)
+                .single();
+
+            if (groupError) {
+                console.error('グループ情報取得エラー:', groupError);
+                setUserGroup(null);
+                return;
+            }
+
+            setUserGroup(groupData);
+        } catch (error) {
+            console.error('グループ情報取得中のエラー:', error);
+            setUserGroup(null);
+        }
+    };
+
+    // 新しいグループを作成する関数
+    const createUserGroup = async (groupData: Omit<UserGroup, 'id' | 'created_at'>): Promise<UserGroup | null> => {
+        if (!user) return null;
+
+        try {
+            // 既にグループに所属しているか確認
+            const { data: userData, error: userError } = await supabase
+                .from('users')
+                .select('group_id')
+                .eq('id', user.id)
+                .single();
+
+            if (userError) throw userError;
+
+            if (userData.group_id) {
+                throw new Error('すでにグループに所属しています');
+            }
+
+            // グループを作成
+            const { data: newGroup, error: createError } = await supabase
+                .from('groups')
+                .insert({
+                    ...groupData,
+                    author_user_id: user.id
+                })
+                .select()
+                .single();
+
+            if (createError) throw createError;
+
+            // ユーザープロフィールのgroup_idを更新
+            const { error: updateError } = await supabase
+                .from('users')
+                .update({ group_id: newGroup.id })
+                .eq('id', user.id);
+
+            if (updateError) throw updateError;
+
+            // 状態を更新
+            setUserGroup(newGroup);
+            
+            return newGroup;
+        } catch (error) {
+            console.error('グループ作成エラー:', error);
+            throw error;
+        }
+    };
+
+    // グループから離脱する関数
+    const leaveUserGroup = async (): Promise<boolean> => {
+        if (!user || !userGroup) return false;
+
+        try {
+            // ユーザーのgroup_idをnullに更新
+            const { error: updateError } = await supabase
+                .from('users')
+                .update({ group_id: null })
+                .eq('id', user.id);
+
+            if (updateError) throw updateError;
+
+            // 作成者が離脱する場合はグループを削除
+            if (userGroup.author_user_id === user.id) {
+                const { error: deleteError } = await supabase
+                    .from('groups')
+                    .delete()
+                    .eq('id', userGroup.id);
+
+                if (deleteError) throw deleteError;
+            }
+
+            // 状態を更新
+            setUserGroup(null);
+            return true;
+        } catch (error) {
+            console.error('グループ離脱エラー:', error);
+            return false;
+        }
+    };
+
     const value: UserContextType = {
         user,
         userProfile,
@@ -690,6 +822,7 @@ export function UserProvider({ children }: { children: ReactNode }) {
         fixedCosts,
         transactions,
         loading,
+        userGroup,
         refreshAll,
         refreshUserProfile,
         updateUserProfile,
@@ -706,6 +839,9 @@ export function UserProvider({ children }: { children: ReactNode }) {
         updateTransaction,
         deleteTransaction,
         getMonthlyStats,
+        fetchUserGroup,
+        createUserGroup,
+        leaveUserGroup,
     };
 
     return (
