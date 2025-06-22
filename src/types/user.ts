@@ -55,3 +55,22 @@ export interface UserGroup {
     invited_user_id?: string;
     created_at?: string;
 }
+
+export interface GroupMember {
+    id: string;
+    username: string | null;
+    email: string;
+    created_at: string;
+    isAdmin: boolean;
+}
+
+export interface GroupInvite {
+    id: string;
+    group_id: string;
+    code: string;
+    created_by: string;
+    created_at: string;
+    expires_at: string;
+    used_by?: string | null;
+    used_at?: string | null;
+}

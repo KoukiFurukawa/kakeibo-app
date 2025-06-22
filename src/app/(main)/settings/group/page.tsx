@@ -6,7 +6,7 @@ import { useRouter, useSearchParams } from 'next/navigation';
 import { useUser } from '@/contexts/UserContext';
 
 export default function GroupSettingsPage() {
-    const { userGroup, loading, leaveUserGroup } = useUser();
+    const { userGroup, loading, updateUserGroup } = useUser();
     const router = useRouter();
     const searchParams = useSearchParams();
     const [showCreateSuccess, setShowCreateSuccess] = useState(false);
@@ -22,6 +22,31 @@ export default function GroupSettingsPage() {
             }, 5000);
         }
     }, [searchParams]);
+
+    // グループに参加している場合のアクション
+    const memberActions = [
+        {
+            title: 'グループ管理',
+            description: 'メンバー管理や設定の変更',
+            icon: (
+                <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z" />
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
+                </svg>
+            ),
+            action: () => router.push('/settings/group/manage')
+        },
+        {
+            title: 'メンバーを招待',
+            description: '招待コードで他のユーザーを招待',
+            icon: (
+                <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 8l7.89 5.26a2 2 0 002.22 0L21 8M5 19h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z" />
+                </svg>
+            ),
+            action: () => router.push('/settings/group/invite')
+        }
+    ];
 
     // グループに参加していない場合のアクション
     const nonMemberActions = [
@@ -43,32 +68,7 @@ export default function GroupSettingsPage() {
                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M18 9v3m0 0v3m0-3h3m-3 0h-3m-2-5a4 4 0 11-8 0 4 4 0 018 0zM3 20a6 6 0 0112 0v1H3v-1z" />
                 </svg>
             ),
-            action: () => alert('グループ参加機能は開発中です')
-        }
-    ];
-
-    // グループに参加している場合のアクション
-    const memberActions = [
-        {
-            title: 'グループ管理',
-            description: 'メンバー管理や設定の変更',
-            icon: (
-                <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z" />
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
-                </svg>
-            ),
-            action: () => alert('グループ管理機能は開発中です')
-        },
-        {
-            title: 'メンバーを招待',
-            description: '招待コードで他のユーザーを招待',
-            icon: (
-                <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 8l7.89 5.26a2 2 0 002.22 0L21 8M5 19h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z" />
-                </svg>
-            ),
-            action: () => alert('招待機能は開発中です')
+            action: () => router.push('/settings/group/join')
         }
     ];
 
@@ -78,7 +78,7 @@ export default function GroupSettingsPage() {
             setError('');
             
             try {
-                const success = await leaveUserGroup();
+                const success = await updateUserGroup({});
                 if (!success) {
                     setError('グループからの離脱に失敗しました。');
                 }
