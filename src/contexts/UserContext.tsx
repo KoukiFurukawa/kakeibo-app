@@ -902,22 +902,46 @@ export function UserProvider({ children }: { children: ReactNode }) {
             // 招待コードが有効か確認
             const { data: inviteData, error: inviteError } = await supabase
                 .from('group_invites')
-                .select('group_id, expires_at')
+                .select('id, group_id, expires_at')
                 .eq('code', inviteCode)
                 .gt('expires_at', new Date().toISOString())
+                .is('used_by', null) // 未使用の招待コードのみを対象に
                 .single();
 
             if (inviteError || !inviteData) {
                 throw new Error('無効または期限切れの招待コードです');
             }
 
-            // ユーザーをグループに参加させる
-            const { error: updateError } = await supabase
+            // トランザクションの代わりに順次更新を行う
+            // 1. ユーザーをグループに参加させる
+            const { error: updateUserError } = await supabase
                 .from('users')
                 .update({ group_id: inviteData.group_id })
                 .eq('id', user.id);
 
-            if (updateError) throw updateError;
+            if (updateUserError) throw updateUserError;
+
+            // 2. 招待コードを使用済みに更新
+            const { error: updateInviteError } = await supabase
+                .from('group_invites')
+                .update({
+                    used_by: user.id,
+                    used_at: new Date().toISOString()
+                })
+                .eq('id', inviteData.id);
+
+            if (updateInviteError) throw updateInviteError;
+
+            // 3. グループのinvited_user_idを更新
+
+            const { error: updateGroupError } = await supabase
+                .from('groups')
+                .update({
+                    invited_user_id: user.id
+                })
+                .eq('id', inviteData.group_id);
+
+            if (updateGroupError) throw updateGroupError;
 
             // グループ情報を再取得
             await fetchUserGroup();

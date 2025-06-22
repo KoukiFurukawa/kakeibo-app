@@ -6,7 +6,7 @@ import { useRouter, useSearchParams } from 'next/navigation';
 import { useUser } from '@/contexts/UserContext';
 
 export default function GroupSettingsPage() {
-    const { userGroup, loading, updateUserGroup, leaveGroup } = useUser();
+    const { userGroup, loading, leaveGroup, user } = useUser();
     const router = useRouter();
     const searchParams = useSearchParams();
     const [showCreateSuccess, setShowCreateSuccess] = useState(false);
@@ -168,7 +168,7 @@ export default function GroupSettingsPage() {
                                 <p className="text-sm text-gray-600 mt-1">{userGroup.description}</p>
                             )}
                             <div className="mt-2 text-xs text-gray-500">
-                                {userGroup.author_user_id === userGroup.author_user_id ? 
+                                {userGroup.author_user_id === user?.id ? 
                                     "あなたはこのグループの管理者です" : 
                                     "あなたはこのグループのメンバーです"
                                 }
