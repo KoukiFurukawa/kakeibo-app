@@ -187,13 +187,13 @@ export default function InviteGroupPage() {
                                 <button
                                     onClick={handleGenerateCode}
                                     disabled={isGenerating}
-                                    className="bg-blue-500 text-white py-2 px-4 rounded-md hover:bg-blue-600 disabled:opacity-50 flex-1"
+                                    className="bg-blue-500 text-white py-2 px-4 my-2 rounded-md hover:bg-blue-600 disabled:opacity-50 flex-1"
                                 >
-                                    {isGenerating ? '生成中...' : '新しいコードを生成'}
+                                    {isGenerating ? '生成中...' : '新しく生成'}
                                 </button>
                                 <Link
                                     href="/settings/group/manage"
-                                    className="bg-gray-200 text-gray-800 py-2 px-4 rounded-md hover:bg-gray-300 text-center flex-1"
+                                    className="bg-gray-200 text-gray-800 py-2 px-4 my-2 rounded-md hover:bg-gray-300 text-center flex-1"
                                 >
                                     管理画面に戻る
                                 </Link>
