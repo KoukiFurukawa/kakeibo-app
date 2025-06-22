@@ -29,10 +29,9 @@ export default function ManageGroupPage() {
     // グループメンバーの取得
     useEffect(() => {
         if (userGroup && !loading) {
-            // 初回のみメンバー情報を取得
+            // メンバー情報を取得
             fetchGroupMembers();
         }
-        // fetchGroupMembers を依存配列から削除、代わりに userGroup.id を依存に追加
     }, [userGroup?.id, loading]);
 
     // ユーザーがグループに所属していない場合はリダイレクト
@@ -262,7 +261,7 @@ export default function ManageGroupPage() {
 
                 <div className="p-4">
                     {groupMembers.length === 0 ? (
-                        <p className="text-center text-gray-500 py-4">メンバー情報を取得中...</p>
+                        <p className="text-center text-gray-500 py-4">メンバーがいません</p>
                     ) : (
                         <ul className="divide-y divide-gray-200">
                             {groupMembers.map((member) => (
