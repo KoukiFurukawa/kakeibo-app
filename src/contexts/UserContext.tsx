@@ -38,6 +38,7 @@ interface UserContextType {
     generateInviteCode: () => Promise<string | null>;
     joinGroupWithInviteCode: (inviteCode: string) => Promise<boolean>;
     removeGroupMember: (memberId: string) => Promise<boolean>;
+    leaveGroup: () => Promise<boolean>;
 }
 
 const UserContext = createContext<UserContextType | undefined>(undefined);
@@ -775,6 +776,49 @@ export function UserProvider({ children }: { children: ReactNode }) {
         }
     };
 
+    const leaveGroup = async (): Promise<boolean> => {
+        if (!user || !userGroup) return false;
+
+        try {
+            // ユーザーがグループの作成者（admin）である場合の処理
+            if (userGroup.author_user_id === user.id) {
+                // 管理者がグループを離脱するとグループは削除される
+                // グループに所属する全ユーザーのgroup_id をnullに設定
+                const { error: updateMembersError } = await supabase
+                    .from('users')
+                    .update({ group_id: null })
+                    .eq('group_id', userGroup.id);
+
+                if (updateMembersError) throw updateMembersError;
+
+                // グループ自体を削除
+                const { error: deleteGroupError } = await supabase
+                    .from('groups')
+                    .delete()
+                    .eq('id', userGroup.id);
+
+                if (deleteGroupError) throw deleteGroupError;
+            } else {
+                // 一般メンバーの場合は自分だけグループから離脱
+                const { error: updateUserError } = await supabase
+                    .from('users')
+                    .update({ group_id: null })
+                    .eq('id', user.id)
+                    .eq('group_id', userGroup.id);
+
+                if (updateUserError) throw updateUserError;
+            }
+
+            // 状態を更新
+            setUserGroup(null);
+            setGroupMembers([]);
+            return true;
+        } catch (error) {
+            console.error('グループ離脱エラー:', error);
+            return false;
+        }
+    };
+    
     // グループメンバー一覧を取得する関数
     const fetchGroupMembers = useCallback(async (): Promise<void> => {
         if (!user || !userGroup) {
@@ -1116,6 +1160,7 @@ export function UserProvider({ children }: { children: ReactNode }) {
         generateInviteCode,
         joinGroupWithInviteCode,
         removeGroupMember,
+        leaveGroup, // 追加
     };
 
     return (

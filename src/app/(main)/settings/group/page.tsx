@@ -6,7 +6,7 @@ import { useRouter, useSearchParams } from 'next/navigation';
 import { useUser } from '@/contexts/UserContext';
 
 export default function GroupSettingsPage() {
-    const { userGroup, loading, updateUserGroup } = useUser();
+    const { userGroup, loading, updateUserGroup, leaveGroup } = useUser();
     const router = useRouter();
     const searchParams = useSearchParams();
     const [showCreateSuccess, setShowCreateSuccess] = useState(false);
@@ -78,7 +78,7 @@ export default function GroupSettingsPage() {
             setError('');
             
             try {
-                const success = await updateUserGroup({});
+                const success = await leaveGroup();
                 if (!success) {
                     setError('グループからの離脱に失敗しました。');
                 }
