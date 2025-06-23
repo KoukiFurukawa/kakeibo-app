@@ -1,9 +1,9 @@
 'use client';
 
-import React, { createContext, useContext, useState, useEffect, ReactNode } from 'react';
+import React, { createContext, useContext, useState, useEffect, ReactNode, useCallback } from 'react';
 import { User } from '@supabase/supabase-js';
 import { supabase } from '@/utils/manage_supabase';
-import { UserProfile, UserNotificationSettings, UserFinance, FixedCost, UserTransaction } from '@/types/user';
+import { UserProfile, UserNotificationSettings, UserFinance, FixedCost, UserTransaction, UserGroup, GroupMember } from '@/types/user';
 
 interface UserContextType {
     user: User | null;
@@ -13,6 +13,8 @@ interface UserContextType {
     fixedCosts: FixedCost[];
     transactions: UserTransaction[];
     loading: boolean;
+    userGroup: UserGroup | null;
+    groupMembers: GroupMember[];
     refreshAll: () => Promise<void>;
     refreshUserProfile: () => Promise<void>;
     updateUserProfile: (updates: Partial<UserProfile>) => Promise<boolean>;
@@ -29,6 +31,14 @@ interface UserContextType {
     updateTransaction: (id: string, transaction: Partial<UserTransaction>) => Promise<boolean>;
     deleteTransaction: (id: string) => Promise<boolean>;
     getMonthlyStats: (year: number, month: number) => { income: number; expense: number; balance: number };
+    fetchUserGroup: () => Promise<void>;
+    createUserGroup: (groupData: Omit<UserGroup, 'id' | 'created_at'>) => Promise<UserGroup | null>;
+    updateUserGroup: (updates: Partial<UserGroup>) => Promise<boolean>;
+    fetchGroupMembers: () => Promise<void>;
+    generateInviteCode: () => Promise<string | null>;
+    joinGroupWithInviteCode: (inviteCode: string) => Promise<boolean>;
+    removeGroupMember: (memberId: string) => Promise<boolean>;
+    leaveGroup: () => Promise<boolean>;
 }
 
 const UserContext = createContext<UserContextType | undefined>(undefined);
@@ -42,6 +52,8 @@ export function UserProvider({ children }: { children: ReactNode }) {
     const [transactions, setTransactions] = useState<UserTransaction[]>([]);
     const [loading, setLoading] = useState(true);
     const [sessionCheckInterval, setSessionCheckInterval] = useState<NodeJS.Timeout | null>(null);
+    const [userGroup, setUserGroup] = useState<UserGroup | null>(null);
+    const [groupMembers, setGroupMembers] = useState<GroupMember[]>([]);
 
     // リトライ用のヘルパー関数
 
@@ -454,7 +466,10 @@ export function UserProvider({ children }: { children: ReactNode }) {
                 refreshNotificationSettings(),
                 refreshUserFinance(),
                 fetchFixedCosts(),
-                fetchTransactions(currentDate.getFullYear(), currentDate.getMonth() + 1)
+                fetchTransactions(currentDate.getFullYear(), currentDate.getMonth() + 1),
+                fetchUserGroup(),
+                // グループが取得できた場合はメンバーも取得
+                userGroup ? fetchGroupMembers() : Promise.resolve(),
             ]);
         } catch (error) {
             console.error('データ再取得エラー:', error);
@@ -525,6 +540,8 @@ export function UserProvider({ children }: { children: ReactNode }) {
                 setUserFinance(null);
                 setFixedCosts([]);
                 setTransactions([]);
+                setUserGroup(null);
+                setGroupMembers([]);
                 
                 // セッションチェックを停止
                 if (sessionCheckInterval) {
@@ -551,11 +568,12 @@ export function UserProvider({ children }: { children: ReactNode }) {
                 setNotificationSettings(settings);
                 setUserFinance(finance);
                 
-                // 固定費と現在月の取引を並列で取得
+                // 固定費と現在月の取引とグループ情報を並列で取得
                 const currentDate = new Date();
                 await Promise.all([
                     fetchFixedCosts(),
-                    fetchTransactions(currentDate.getFullYear(), currentDate.getMonth() + 1)
+                    fetchTransactions(currentDate.getFullYear(), currentDate.getMonth() + 1),
+                    fetchUserGroup()
                 ]);
                 
                 // ユーザーデータ取得後にセッションチェックを開始
@@ -682,6 +700,457 @@ export function UserProvider({ children }: { children: ReactNode }) {
         return null;
     };
 
+    // 新しいグループを作成する関数
+    const createUserGroup = async (groupData: Omit<UserGroup, 'id' | 'created_at'>): Promise<UserGroup | null> => {
+        if (!user) return null;
+
+        try {
+            // 既にグループに所属しているか確認
+            const { data: userData, error: userError } = await supabase
+                .from('users')
+                .select('group_id')
+                .eq('id', user.id)
+                .single();
+
+            if (userError) throw userError;
+
+            if (userData.group_id) {
+                throw new Error('すでにグループに所属しています');
+            }
+
+            // グループを作成
+            const { data: newGroup, error: createError } = await supabase
+                .from('groups')
+                .insert({
+                    ...groupData,
+                    author_user_id: user.id
+                })
+                .select()
+                .single();
+
+            if (createError) throw createError;
+
+            // ユーザープロフィールのgroup_idを更新
+            const { error: updateError } = await supabase
+                .from('users')
+                .update({ group_id: newGroup.id })
+                .eq('id', user.id);
+
+            if (updateError) throw updateError;
+
+            // 状態を更新
+            setUserGroup(newGroup);
+            
+            return newGroup;
+        } catch (error) {
+            console.error('グループ作成エラー:', error);
+            throw error;
+        }
+    };
+
+    // グループ情報を更新する関数
+    const updateUserGroup = async (updates: Partial<UserGroup>): Promise<boolean> => {
+        if (!user || !userGroup) return false;
+
+        try {
+            // 作成者のみがグループを更新できる
+            if (userGroup.author_user_id !== user.id) {
+                throw new Error('グループの管理者のみが更新できます');
+            }
+
+            const { data, error } = await supabase
+                .from('groups')
+                .update(updates)
+                .eq('id', userGroup.id)
+                .select()
+                .single();
+
+            if (error) throw error;
+
+            // 状態を更新
+            setUserGroup({...userGroup, ...data});
+            return true;
+        } catch (error) {
+            console.error('グループ更新エラー:', error);
+            return false;
+        }
+    };
+
+    const leaveGroup = async (): Promise<boolean> => {
+        if (!user || !userGroup) return false;
+
+        try {
+            // ユーザーがグループの作成者（admin）である場合の処理
+            if (userGroup.author_user_id === user.id) {
+                // 管理者がグループを離脱するとグループは削除される
+                // グループに所属する全ユーザーのgroup_id をnullに設定
+                const { error: updateMembersError } = await supabase
+                    .from('users')
+                    .update({ group_id: null })
+                    .eq('group_id', userGroup.id);
+
+                if (updateMembersError) throw updateMembersError;
+
+                // グループ自体を削除
+                const { error: deleteGroupError } = await supabase
+                    .from('groups')
+                    .delete()
+                    .eq('id', userGroup.id);
+
+                if (deleteGroupError) throw deleteGroupError;
+            } else {
+                // 一般メンバーの場合は自分だけグループから離脱
+                const { error: updateUserError } = await supabase
+                    .from('users')
+                    .update({ group_id: null })
+                    .eq('id', user.id)
+                    .eq('group_id', userGroup.id);
+
+                if (updateUserError) throw updateUserError;
+            }
+
+            // 状態を更新
+            setUserGroup(null);
+            setGroupMembers([]);
+            return true;
+        } catch (error) {
+            console.error('グループ離脱エラー:', error);
+            return false;
+        }
+    };
+    
+    // グループメンバー一覧を取得する関数
+    const fetchGroupMembers = useCallback(async (): Promise<void> => {
+        if (!user || !userGroup) {
+            setGroupMembers([]);
+            return;
+        }
+
+        try {
+            // グループIDに所属するすべてのユーザーを取得
+            // グループの Invited_user_id でよい。更新予定
+            const { data, error } = await supabase
+                .from('users')
+                .select('id, username, email, created_at')
+                .eq('group_id', userGroup.id);
+
+            if (error) throw error;
+
+            // 管理者情報をマークする
+            const membersWithRole = data.map(member => ({
+                ...member,
+                isAdmin: member.id === userGroup.author_user_id
+            }));
+
+            setGroupMembers(membersWithRole);
+        } catch (error) {
+            console.error('グループメンバー取得エラー:', error);
+            setGroupMembers([]);
+        }
+    }, [user, userGroup]);
+
+    // 招待コードを生成する関数
+    const generateInviteCode = async (): Promise<string | null> => {
+        if (!user || !userGroup) return null;
+
+        try {
+            // 管理者のみが招待コードを生成できる
+            if (userGroup.author_user_id !== user.id) {
+                throw new Error('グループの管理者のみが招待コードを生成できます');
+            }
+
+            // ランダムコードを生成
+            const code = Math.random().toString(36).substring(2, 10).toUpperCase();
+            
+            // コードを保存
+            const { error } = await supabase
+                .from('group_invites')
+                .insert({
+                    group_id: userGroup.id,
+                    code: code,
+                    created_by: user.id,
+                    expires_at: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000).toISOString() // 7日間有効
+                });
+
+            if (error) throw error;
+            
+            return code;
+        } catch (error) {
+            console.error('招待コード生成エラー:', error);
+            return null;
+        }
+    };
+
+    // 招待コードでグループに参加する関数
+    const joinGroupWithInviteCode = async (inviteCode: string): Promise<boolean> => {
+        if (!user) return false;
+
+        try {
+            // 既にグループに所属しているかチェック
+            const { data: userData, error: userError } = await supabase
+                .from('users')
+                .select('group_id')
+                .eq('id', user.id)
+                .single();
+
+            if (userError) throw userError;
+            
+            if (userData.group_id) {
+                throw new Error('すでにグループに所属しています');
+            }
+
+            // 招待コードが有効か確認
+            const { data: inviteData, error: inviteError } = await supabase
+                .from('group_invites')
+                .select('id, group_id, expires_at')
+                .eq('code', inviteCode)
+                .gt('expires_at', new Date().toISOString())
+                .is('used_by', null) // 未使用の招待コードのみを対象に
+                .single();
+
+            if (inviteError || !inviteData) {
+                throw new Error('無効または期限切れの招待コードです');
+            }
+
+            // トランザクションの代わりに順次更新を行う
+            // 1. ユーザーをグループに参加させる
+            const { error: updateUserError } = await supabase
+                .from('users')
+                .update({ group_id: inviteData.group_id })
+                .eq('id', user.id);
+
+            if (updateUserError) throw updateUserError;
+
+            // 2. 招待コードを使用済みに更新
+            const { error: updateInviteError } = await supabase
+                .from('group_invites')
+                .update({
+                    used_by: user.id,
+                    used_at: new Date().toISOString()
+                })
+                .eq('id', inviteData.id);
+
+            if (updateInviteError) throw updateInviteError;
+
+            // 3. グループのinvited_user_idを更新
+
+            const { error: updateGroupError } = await supabase
+                .from('groups')
+                .update({
+                    invited_user_id: user.id
+                })
+                .eq('id', inviteData.group_id);
+
+            if (updateGroupError) throw updateGroupError;
+
+            // グループ情報を再取得
+            await fetchUserGroup();
+            return true;
+        } catch (error) {
+            console.error('グループ参加エラー:', error);
+            throw error;
+        }
+    };
+
+    // グループメンバーを削除する関数
+    const removeGroupMember = async (memberId: string): Promise<boolean> => {
+        if (!user || !userGroup) return false;
+
+        try {
+            // 自分自身は削除できない（代わりに離脱を使用）
+            if (memberId === user.id) {
+                throw new Error('自分自身を削除することはできません');
+            }
+
+            // 管理者のみがメンバーを削除できる
+            if (userGroup.author_user_id !== user.id) {
+                throw new Error('グループの管理者のみがメンバーを削除できます');
+            }
+
+            // メンバーのグループIDをnullに更新
+            const { error } = await supabase
+                .from('users')
+                .update({ group_id: null })
+                .eq('id', memberId)
+                .eq('group_id', userGroup.id);
+
+            if (error) throw error;
+
+            // メンバーリストを更新
+            setGroupMembers(groupMembers.filter(member => member.id !== memberId));
+            return true;
+        } catch (error) {
+            console.error('メンバー削除エラー:', error);
+            return false;
+        }
+    };
+
+    // グループデータ取得関数の拡張
+    const fetchUserGroup = async () => {
+        if (!user) return;
+
+        try {
+            // まずユーザープロフィールからgroup_idを取得
+            const { data: userData, error: userError } = await supabase
+                .from('users')
+                .select('group_id')
+                .eq('id', user.id)
+                .single();
+
+            if (userError) {
+                console.error('グループID取得エラー:', userError);
+                setUserGroup(null);
+                return;
+            }
+
+            // group_idがない場合は所属グループなし
+            if (!userData.group_id) {
+                setUserGroup(null);
+                setGroupMembers([]);
+                return;
+            }
+
+            // group_idがある場合、グループ情報を取得
+            const { data: groupData, error: groupError } = await supabase
+                .from('groups')
+                .select('*')
+                .eq('id', userData.group_id)
+                .single();
+
+            if (groupError) {
+                console.error('グループ情報取得エラー:', groupError);
+                setUserGroup(null);
+                setGroupMembers([]);
+                return;
+            }
+
+            setUserGroup(groupData);
+
+            // グループ情報が取得できた場合、メンバー情報も取得
+            await fetchGroupMembers();
+        } catch (error) {
+            console.error('グループ情報取得中のエラー:', error);
+            setUserGroup(null);
+            setGroupMembers([]);
+        }
+    };
+    
+    // 認証状態の監視とユーザープロフィールの取得
+    useEffect(() => {
+        let isMounted = true;
+
+        const getInitialSession = async () => {
+            try {
+                // セッションの有効性を確認
+                const { data: { session }, error: sessionError } = await supabase.auth.getSession();
+                
+                if (sessionError) {
+                    console.error('セッション取得エラー:', sessionError);
+                    if (isMounted) setLoading(false);
+                    return;
+                }
+
+                const currentUser = session?.user || null;
+                if (!isMounted) return;
+                
+                // ユーザー状態だけを更新し、データ取得はしない
+                setUser(currentUser);
+            } catch (error) {
+                console.error('初期セッション取得エラー:', error);
+                if (isMounted) setLoading(false);
+            }
+        };
+
+        getInitialSession();
+
+        // 認証状態の変更を監視
+        const { data: { subscription } } = supabase.auth.onAuthStateChange(
+            (event, session) => {
+                console.log('Auth state changed:', event, session?.user?.id);
+                
+                if (!isMounted) return;
+                
+                // ユーザー状態の更新のみを行う（データ取得は別のuseEffectで実施）
+                setUser(session?.user ?? null);
+            }
+        );
+
+        return () => {
+            isMounted = false;
+            subscription.unsubscribe();
+            if (sessionCheckInterval) {
+                clearInterval(sessionCheckInterval);
+                setSessionCheckInterval(null);
+            }
+        };
+    }, []);
+
+    // ユーザー状態の変更を監視して必要なデータを取得
+    useEffect(() => {
+        let isMounted = true;
+
+        const fetchUserData = async () => {
+            if (!user) {
+                // ユーザーがnullの場合はデータをクリア
+                setUserProfile(null);
+                setNotificationSettings(null);
+                setUserFinance(null);
+                setFixedCosts([]);
+                setTransactions([]);
+                setUserGroup(null);
+                setGroupMembers([]);
+                
+                // セッションチェックを停止
+                if (sessionCheckInterval) {
+                    clearInterval(sessionCheckInterval);
+                    setSessionCheckInterval(null);
+                }
+                
+                setLoading(false);
+                return;
+            }
+            
+            setLoading(true);
+            try {
+                // 並列でデータを取得してパフォーマンスを向上
+                const [profile, settings, finance] = await Promise.all([
+                    fetchUserProfile(user.id),
+                    fetchNotificationSettings(user.id),
+                    fetchUserFinance(user.id)
+                ]);
+
+                if (!isMounted) return;
+
+                setUserProfile(profile);
+                setNotificationSettings(settings);
+                setUserFinance(finance);
+                
+                // 固定費と現在月の取引とグループ情報を並列で取得
+                const currentDate = new Date();
+                await Promise.all([
+                    fetchFixedCosts(),
+                    fetchTransactions(currentDate.getFullYear(), currentDate.getMonth() + 1),
+                    fetchUserGroup()
+                ]);
+                
+                // ユーザーデータ取得後にセッションチェックを開始
+                startSessionCheck();
+            } catch (error) {
+                console.error('ユーザーデータ取得エラー:', error);
+            } finally {
+                if (isMounted) {
+                    setLoading(false);
+                }
+            }
+        };
+        
+        fetchUserData();
+        
+        return () => {
+            isMounted = false;
+        };
+    }, [user]); // userが変更されたときにデータを再取得
+    
     const value: UserContextType = {
         user,
         userProfile,
@@ -690,6 +1159,8 @@ export function UserProvider({ children }: { children: ReactNode }) {
         fixedCosts,
         transactions,
         loading,
+        userGroup,
+        groupMembers,
         refreshAll,
         refreshUserProfile,
         updateUserProfile,
@@ -706,6 +1177,14 @@ export function UserProvider({ children }: { children: ReactNode }) {
         updateTransaction,
         deleteTransaction,
         getMonthlyStats,
+        fetchUserGroup,
+        createUserGroup,
+        updateUserGroup,
+        fetchGroupMembers,
+        generateInviteCode,
+        joinGroupWithInviteCode,
+        removeGroupMember,
+        leaveGroup, // 追加
     };
 
     return (

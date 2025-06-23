@@ -6,6 +6,7 @@ export interface UserProfile {
     notifications?: boolean;
     created_at?: string;
     updated_at?: string;
+    group_id?: string | null;
 }
 
 export interface UserNotificationSettings {
@@ -45,4 +46,31 @@ export interface UserTransaction {
     is_income: boolean;
     date: string;
     created_at: string;
+}
+export interface UserGroup {
+    id: string;
+    group_name: string;
+    description?: string;
+    author_user_id: string;
+    invited_user_id?: string;
+    created_at?: string;
+}
+
+export interface GroupMember {
+    id: string;
+    username: string | null;
+    email: string;
+    created_at: string;
+    isAdmin: boolean;
+}
+
+export interface GroupInvite {
+    id: string;
+    group_id: string;
+    code: string;
+    created_by: string;
+    created_at: string;
+    expires_at: string;
+    used_by?: string | null;
+    used_at?: string | null;
 }
