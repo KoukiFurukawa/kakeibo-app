@@ -4,9 +4,10 @@ import { useState, useEffect } from 'react';
 import Link from 'next/link';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { useUser } from '@/contexts/UserContext';
+import { GroupService } from '@/services/groupService';
 
 export default function GroupSettingsPage() {
-    const { userGroup, loading, leaveGroup, user } = useUser();
+    const { userGroup, loading, user, refreshUserGroup } = useUser();
     const router = useRouter();
     const searchParams = useSearchParams();
     const [showCreateSuccess, setShowCreateSuccess] = useState(false);
@@ -76,12 +77,20 @@ export default function GroupSettingsPage() {
         if (confirm('本当にグループから離脱しますか？\n\n管理者の場合、グループは削除されます。')) {
             setLeavingGroup(true);
             setError('');
+
+            if (!user || !userGroup) {
+                setError('ユーザー情報が取得できません。ログインしてください。');
+                setLeavingGroup(false);
+                return;
+            }
             
             try {
-                const success = await leaveGroup();
+                const success = await GroupService.leaveGroup(user.id, userGroup);
                 if (!success) {
                     setError('グループからの離脱に失敗しました。');
                 }
+
+                await refreshUserGroup(); // グループ情報を再取得
             } catch (err: any) {
                 setError(err.message || 'エラーが発生しました');
             } finally {

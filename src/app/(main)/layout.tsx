@@ -4,7 +4,6 @@ import PWAInstallPrompt from "@/components/PWAInstallPrompt";
 import OfflineIndicator from "@/components/OfflineIndicator";
 import SyncStatus from "@/components/SyncStatus";
 import { getCurrentUserServer } from "@/utils/auth-server";
-import { UserProvider, useUser  } from "@/contexts/UserContext";
 import { redirect } from 'next/navigation';
 
 export default async function MainLayout({

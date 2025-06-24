@@ -4,10 +4,11 @@ import { useState } from 'react';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
 import { useUser } from '@/contexts/UserContext';
+import { GroupService } from '@/services/groupService';
 
 export default function CreateGroupPage() {
     const router = useRouter();
-    const { userGroup, createUserGroup, loading: userLoading } = useUser();
+    const { user, userGroup, loading: userLoading, refreshUserGroup } = useUser();
     
     const [groupName, setGroupName] = useState('');
     const [description, setDescription] = useState('');
@@ -59,13 +60,20 @@ export default function CreateGroupPage() {
             return;
         }
 
+        if (!user) {
+            setError('ユーザー情報が取得できません。再度ログインしてください。');
+            setLoading(false);
+            return;
+        }
+
         try {
-            await createUserGroup({
+            await GroupService.createUserGroup(user.id, {
                 group_name: groupName.trim(),
                 description: description.trim() || undefined,
                 author_user_id: '',  // この値はサーバー側で設定されます
             });
             
+            await refreshUserGroup(); // ユーザーグループ情報を更新
             // 成功したら設定ページに戻る
             router.push('/settings/group?created=true');
         } catch (err: any) {

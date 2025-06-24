@@ -4,9 +4,10 @@ import { useState, useEffect } from 'react';
 import { useUser } from '@/contexts/UserContext';
 import Link from 'next/link';
 import LoadingWithReload from '@/components/LoadingWithReload';
+import { FinanceService } from '@/services/financeService';
 
 export default function BudgetSettingsPage() {
-    const { userFinance, loading: userLoading, updateUserFinance, refreshAll } = useUser();
+    const { userFinance, loading: userLoading, refreshAll, user, refreshUserFinance } = useUser();
     const [savingGoal, setSavingGoal] = useState('');
     const [food, setFood] = useState('');
     const [entertainment, setEntertainment] = useState('');
@@ -48,14 +49,21 @@ export default function BudgetSettingsPage() {
         setMessage('');
 
         try {
-            const success = await updateUserFinance({
-                savings_goal: savingGoal ? Number(savingGoal) : 0,
-                food: food ? Number(food) : 0,
-                entertainment: entertainment ? Number(entertainment) : 0,
-                clothing: clothing ? Number(clothing) : 0,
-                daily_goods: dailyGoods ? Number(dailyGoods) : 0,
-                other: other ? Number(other) : 0,
-            });
+            if (!user) {
+                setMessage('ユーザー情報が取得できません。ログインしてください。');
+                return;
+            }
+            const success = await FinanceService.updateUserFinance(
+                user.id,
+                {
+                    savings_goal: savingGoal ? Number(savingGoal) : 0,
+                    food: food ? Number(food) : 0,
+                    entertainment: entertainment ? Number(entertainment) : 0,
+                    clothing: clothing ? Number(clothing) : 0,
+                    daily_goods: dailyGoods ? Number(dailyGoods) : 0,
+                    other: other ? Number(other) : 0,
+                }
+            );
 
             if (success) {
                 setMessage('予算設定を保存しました');
@@ -64,6 +72,8 @@ export default function BudgetSettingsPage() {
             } else {
                 setMessage('設定の保存に失敗しました。もう一度お試しください。');
             }
+
+            await refreshUserFinance(); // ユーザーファイナンスを再取得
         } catch (error) {
             console.error('予算設定保存エラー:', error);
             setMessage('設定の保存に失敗しました。もう一度お試しください。');

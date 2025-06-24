@@ -4,11 +4,12 @@ import { useState, useEffect } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import Link from 'next/link';
 import { useUser } from '@/contexts/UserContext';
+import { GroupService } from '@/services/groupService';
 
 export default function JoinGroupPage() {
     const router = useRouter();
     const searchParams = useSearchParams();
-    const { userGroup, loading, joinGroupWithInviteCode } = useUser();
+    const { user, userGroup, loading, refreshUserGroup, refreshUserProfile } = useUser();
     
     const [inviteCode, setInviteCode] = useState('');
     const [isJoining, setIsJoining] = useState(false);
@@ -38,19 +39,29 @@ export default function JoinGroupPage() {
         e.preventDefault();
         setIsJoining(true);
         setError('');
+
+        if (!user)
+        {
+            setError('ユーザー情報が取得できません。再度ログインしてください。');
+            setIsJoining(false);
+            return;
+        }
         
         try {
             if (!inviteCode.trim()) {
                 throw new Error('招待コードを入力してください');
             }
             
-            await joinGroupWithInviteCode(inviteCode.trim());
+            await GroupService.joinGroupWithInviteCode(user.id, inviteCode.trim());
             setSuccess(true);
             
             // 成功後、リダイレクト
             setTimeout(() => {
                 router.push('/settings/group');
             }, 2000);
+
+            await refreshUserGroup(); // ユーザーグループ情報を更新
+            await refreshUserProfile(); // ユーザープロフィール情報を更新
         } catch (err: any) {
             setError(err.message || 'グループ参加に失敗しました');
         } finally {
