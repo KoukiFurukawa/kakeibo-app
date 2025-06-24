@@ -11,6 +11,7 @@ import TransactionList from "@/components/home/TransactionList";
 import TransactionModal from "@/components/home/TransactionModal";
 import { generateExpenseByTag } from "@/utils/chartHelpers";
 import { Transaction, TransactionInput } from "@/types/transaction";
+import { FinanceService } from "@/services/financeService";
 
 export default function Home() {
   const {
@@ -18,10 +19,8 @@ export default function Home() {
     userFinance,
     transactions,
     loading,
+    refreshTransactions,
     refreshAll,
-    addTransaction,
-    getMonthlyStats,
-    fetchTransactions
   } = useUser();
 
   // 状態管理
@@ -35,7 +34,7 @@ export default function Home() {
 
   // 月別統計データ
   const monthlyStats = transactions.length > 0
-    ? getMonthlyStats(selectedYear, selectedMonth)
+    ? FinanceService.getMonthlyStats(transactions, selectedYear, selectedMonth)
     : { income: 0, expense: 0, balance: 0 };
 
   // 選択された月の取引データを取得
@@ -87,7 +86,7 @@ export default function Home() {
   const handleMonthChange = async (year: number, month: number) => {
     setSelectedYear(year);
     setSelectedMonth(month);
-    await fetchTransactions(year, month);
+    await refreshTransactions(year, month);
   };
 
   // 取引追加ハンドラ
@@ -96,12 +95,16 @@ export default function Home() {
     setMessage('');
 
     try {
-      const newTransaction = await addTransaction(data);
+      if (!user) {
+        setMessage('ユーザー情報が取得できません。再ログインしてください。');
+        return;
+      }
+      const newTransaction = await FinanceService.addTransaction(user.id, data);
 
       if (newTransaction) {
         setShowInputModal(false);
         setMessage('収支を追加しました');
-        await fetchTransactions(selectedYear, selectedMonth);
+        await refreshTransactions(selectedYear, selectedMonth);
         setTimeout(() => setMessage(''), 3000);
       } else {
         setMessage('追加に失敗しました。もう一度お試しください。');
@@ -119,13 +122,6 @@ export default function Home() {
     setActiveTab(tab);
     setSelectedTag('all');
   };
-
-  useEffect(() => {
-    // 全データ取得
-    if (user) {
-      fetchTransactions();
-    }
-  },[user])
 
   // データ初期化監視
   useEffect(() => {
@@ -145,7 +141,7 @@ export default function Home() {
         clearTimeout(timeoutId);
       }
     };
-  }, [loading, transactions.length, refreshAll, user, selectedYear, selectedMonth, fetchTransactions]);
+  }, [loading, transactions.length, refreshAll, user, selectedYear, selectedMonth]);
 
   if (loading) {
     return (
