@@ -220,30 +220,46 @@ export class GroupService {
         }
     }
 
-    static async leaveGroup(userId: string, groupId: string, isAdmin: boolean): Promise<boolean> {
+    static async leaveGroup(userId: string, userGroup: UserGroup): Promise<boolean> {
         try {
-            if (isAdmin) {
+            // 管理者(admin)の場合はグループ全体を削除
+            if (userId === userGroup.author_user_id) {
+                // グループに所属する全メンバーのgroup_idをnullに更新
                 const { error: updateMembersError } = await supabase
                     .from('users')
                     .update({ group_id: null })
-                    .eq('group_id', groupId);
+                    .eq('group_id', userGroup.id);
 
                 if (updateMembersError) throw updateMembersError;
 
+                // グループ自体を削除
                 const { error: deleteGroupError } = await supabase
                     .from('groups')
                     .delete()
-                    .eq('id', groupId);
+                    .eq('id', userGroup.id);
 
                 if (deleteGroupError) throw deleteGroupError;
             } else {
+                // 通常メンバーの場合は自分だけグループから離脱
+                
+                // 1. ユーザーテーブルのgroup_idをnullに更新
                 const { error: updateUserError } = await supabase
                     .from('users')
                     .update({ group_id: null })
                     .eq('id', userId)
-                    .eq('group_id', groupId);
-
+                    .eq('group_id', userGroup.id);
+                    
                 if (updateUserError) throw updateUserError;
+                
+                // 2. グループテーブルのinvited_user_idを更新
+                // このユーザーがinvited_user_idに設定されている場合のみnullに更新
+                const { error: updateGroupError} = await supabase
+                    .from('groups')
+                    .update({ invited_user_id: null })
+                    .eq('id', userGroup.id)
+                    .eq('invited_user_id', userId); // このユーザーが招待されたユーザーの場合のみ更新
+
+                if (updateGroupError) throw updateGroupError;
             }
 
             return true;
