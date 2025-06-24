@@ -4,9 +4,10 @@ import { useState, useEffect } from 'react';
 import { useUser } from '@/contexts/UserContext';
 import NotificationSettings from '@/components/NotificationSettings';
 import Link from 'next/link';
+import { UserService } from '@/services/userService';
 
 export default function NotificationsPage() {
-    const { notificationSettings, updateNotificationSettings } = useUser();
+    const { user, notificationSettings, refreshNotificationSettings } = useUser();
     const [localSettings, setLocalSettings] = useState({
         todo: false,
         event: false,
@@ -35,9 +36,15 @@ export default function NotificationsPage() {
     };
 
     const handleSave = async () => {
+        if (!user)
+        {
+            console.error('User is not logged in');
+            return;
+        }
         try {
-            await updateNotificationSettings(localSettings);
+            await UserService.updateNotificationSettings(user.id, localSettings);
             setHasChanges(false);
+            await refreshNotificationSettings(); // Refresh settings after save
         } catch (error) {
             console.error('Failed to save notification settings:', error);
         }

@@ -4,10 +4,11 @@ import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
 import { useUser } from '@/contexts/UserContext';
+import { GroupService } from '@/services/groupService';
 
 export default function ManageGroupPage() {
     const router = useRouter();
-    const { user, userGroup, groupMembers, loading, updateUserGroup, fetchGroupMembers, removeGroupMember } = useUser();
+    const { user, userGroup, groupMembers, loading, refreshUserGroup } = useUser();
     
     const [isEditing, setIsEditing] = useState(false);
     const [groupName, setGroupName] = useState('');
@@ -30,7 +31,7 @@ export default function ManageGroupPage() {
     useEffect(() => {
         if (userGroup && !loading) {
             // メンバー情報を取得
-            fetchGroupMembers();
+            GroupService.fetchGroupMembers(userGroup.id, userGroup.author_user_id);
         }
     }, [userGroup?.id, loading]);
 
@@ -52,7 +53,12 @@ export default function ManageGroupPage() {
                 throw new Error('グループ名は必須です');
             }
 
-            const success = await updateUserGroup({
+            if (!userGroup || !user)
+            {
+                throw new Error('ユーザー情報が取得できません。再度ログインしてください。');
+            }
+
+            const success = await GroupService.updateUserGroup(user.id, userGroup.id, {
                 group_name: groupName.trim(),
                 description: groupDescription.trim() || undefined,
             });
@@ -66,6 +72,7 @@ export default function ManageGroupPage() {
             } else {
                 throw new Error('グループ更新に失敗しました');
             }
+            await refreshUserGroup(); // グループ情報を更新
         } catch (err: any) {
             setError(err.message || 'エラーが発生しました');
         } finally {
@@ -81,15 +88,21 @@ export default function ManageGroupPage() {
         setError('');
         
         try {
-            const success = await removeGroupMember(memberId);
+            if (!userGroup || !user) {
+                throw new Error('ユーザー情報が取得できません。再度ログインしてください。');
+            }
+            const success = await GroupService.removeGroupMember(userGroup.author_user_id, userGroup.id, memberId);
             if (success) {
                 setAdminMessage('メンバーを削除しました');
                 setTimeout(() => {
                     setAdminMessage('');
                 }, 3000);
+            await refreshUserGroup(); // グループ情報を更新
             } else {
                 throw new Error('メンバー削除に失敗しました');
             }
+            
+            await refreshUserGroup(); // グループ情報を更新
         } catch (err: any) {
             setError(err.message || 'エラーが発生しました');
         } finally {

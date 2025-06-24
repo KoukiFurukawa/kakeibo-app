@@ -1,12 +1,13 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useEffect, useState } from 'react';
 import Link from 'next/link';
 import { useUser } from '@/contexts/UserContext';
 import LoadingWithReload from '@/components/LoadingWithReload';
+import { FinanceService } from '@/services/financeService';
 
 export default function FixedCostsPage() {
-    const { fixedCosts, addFixedCost, updateFixedCost, deleteFixedCost, fetchFixedCosts, loading, refreshAll } = useUser();
+    const { user, fixedCosts, loading, refreshAll, refreshFixedCosts } = useUser();
     const [name, setName] = useState('');
     const [amount, setAmount] = useState('');
     const [tag, setTag] = useState('');
@@ -20,10 +21,6 @@ export default function FixedCostsPage() {
         '住居費', '水道光熱費', '通信費', '保険料', 'サブスクリプション', 'ローン', 'その他'
     ];
 
-    useEffect(() => {
-        fetchFixedCosts();
-    }, []);
-
     const handleSubmit = async (e: React.FormEvent, continueAdding = false) => {
         e.preventDefault();
 
@@ -35,8 +32,12 @@ export default function FixedCostsPage() {
         setMessage('');
 
         try {
+            if (!user) {
+                setMessage('ユーザー情報が取得できません。ログインしてください。');
+                return;
+            }
             if (editingId) {
-                const success = await updateFixedCost(editingId, {
+                const success = await FinanceService.updateFixedCost(user.id, editingId, {
                     title: name,
                     cost: Number(amount),
                     tag,
@@ -51,7 +52,7 @@ export default function FixedCostsPage() {
                     setMessage('更新に失敗しました。もう一度お試しください。');
                 }
             } else {
-                const newFixedCost = await addFixedCost({
+                const newFixedCost = await FinanceService.addFixedCost(user.id, {
                     title: name,
                     cost: Number(amount),
                     tag,
@@ -74,6 +75,8 @@ export default function FixedCostsPage() {
             setPaymentDay('1');
 
             setTimeout(() => setMessage(''), 3000);
+
+            await refreshFixedCosts();
         } catch (error) {
             console.error('固定費保存エラー:', error);
             setMessage('保存に失敗しました。もう一度お試しください。');
@@ -91,11 +94,17 @@ export default function FixedCostsPage() {
             return;
         }
 
+        if (!user)
+        {
+            setMessage('ユーザー情報が取得できません。ログインしてください。');
+            return;
+        }
+
         setSaving(true);
         setMessage('');
 
         try {
-            const newFixedCost = await addFixedCost({
+            const newFixedCost = await FinanceService.addFixedCost(user.id, {
                 title: name,
                 cost: Number(amount),
                 tag,
@@ -112,6 +121,8 @@ export default function FixedCostsPage() {
             } else {
                 setMessage('追加に失敗しました。もう一度お試しください。');
             }
+
+            await refreshFixedCosts();
         } catch (error) {
             console.error('固定費保存エラー:', error);
             setMessage('保存に失敗しました。もう一度お試しください。');
@@ -131,14 +142,19 @@ export default function FixedCostsPage() {
 
     const handleDelete = async (id: string) => {
         if (!confirm('この固定費を削除しますか？')) return;
+        if (!user) { 
+            setMessage('ユーザー情報が取得できません。ログインしてください。');
+            return;
+        }
 
-        const success = await deleteFixedCost(id);
+        const success = await FinanceService.deleteFixedCost(user.id, id);
         if (success) {
             setMessage('固定費を削除しました');
             setTimeout(() => setMessage(''), 3000);
         } else {
             setMessage('削除に失敗しました。もう一度お試しください。');
         }
+        await refreshFixedCosts();
     };
 
     const handleCancel = () => {

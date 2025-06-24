@@ -4,10 +4,11 @@ import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
 import { useUser } from '@/contexts/UserContext';
+import { GroupService } from '@/services/groupService';
 
 export default function InviteGroupPage() {
     const router = useRouter();
-    const { user, userGroup, loading, generateInviteCode } = useUser();
+    const { user, userGroup, loading } = useUser();
     
     const [inviteCode, setInviteCode] = useState<string | null>(null);
     const [isGenerating, setIsGenerating] = useState(false);
@@ -29,9 +30,15 @@ export default function InviteGroupPage() {
     const handleGenerateCode = async () => {
         setIsGenerating(true);
         setError('');
+
+        if (!user || !userGroup) {
+            setError('ユーザー情報が取得できません。再度ログインしてください。');
+            setIsGenerating(false);
+            return;
+        }
         
         try {
-            const code = await generateInviteCode();
+            const code = await GroupService.generateInviteCode(user.id, userGroup.id);
             if (code) {
                 setInviteCode(code);
             } else {

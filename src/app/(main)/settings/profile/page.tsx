@@ -5,9 +5,10 @@ import { useHandleLogout } from '@/utils/manage_supabase';
 import { useUser } from '@/contexts/UserContext';
 import Link from 'next/link';
 import LoadingWithReload from '@/components/LoadingWithReload';
+import { UserService } from '@/services/userService';
 
 export default function ProfileSettingsPage() {
-    const { user, userProfile, loading: userLoading, updateUserProfile, refreshAll } = useUser();
+    const { user, userProfile, loading: userLoading, refreshAll, refreshUserProfile } = useUser();
     const [userName, setUserName] = useState('');
     const [loading, setLoading] = useState(false);
     const [message, setMessage] = useState('');
@@ -30,7 +31,7 @@ export default function ProfileSettingsPage() {
         setMessage('');
 
         try {
-            const success = await updateUserProfile({
+            const success = await UserService.updateUserProfile(user.id, {
                 username: userName || null,
                 updated_at: new Date().toISOString(),
             });
@@ -42,6 +43,7 @@ export default function ProfileSettingsPage() {
             } else {
                 setMessage('更新に失敗しました。もう一度お試しください。');
             }
+            await refreshUserProfile(); // ユーザープロフィールを更新
         } catch (error) {
             console.error('プロフィール更新エラー:', error);
             setMessage('更新に失敗しました。もう一度お試しください。');
