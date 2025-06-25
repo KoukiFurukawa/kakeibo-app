@@ -2,11 +2,10 @@ export interface UserProfile {
     id: string;
     email: string;
     username: string | null;
-    target_month_savings?: number;
-    notifications?: boolean;
     created_at?: string;
     updated_at?: string;
     group_id?: string | null;
+    salary_day?: number;
 }
 
 export interface UserNotificationSettings {
