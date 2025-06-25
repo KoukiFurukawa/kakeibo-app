@@ -9,9 +9,11 @@ import MonthSummary from "@/components/home/MonthSummary";
 import BudgetProgress from "@/components/home/BudgetProgress";
 import TransactionList from "@/components/home/TransactionList";
 import TransactionModal from "@/components/home/TransactionModal";
+import UserSwitcher from "@/components/home/UserSwitcher";
 import { generateExpenseByTag } from "@/utils/chartHelpers";
 import { TransactionInput } from "@/types/transaction";
 import { FinanceService } from "@/services/financeService";
+import { GroupMember } from "@/types/user";
 
 export default function Home() {
   const {
@@ -22,6 +24,8 @@ export default function Home() {
     loading,
     refreshTransactions,
     refreshAll,
+    userGroup,
+    groupMembers,
   } = useUser();
 
   // 給料日（デフォルトは1日）
@@ -35,6 +39,12 @@ export default function Home() {
   const [selectedTag, setSelectedTag] = useState<string>('all');
   const [selectedYear, setSelectedYear] = useState(new Date().getFullYear())
   const [selectedMonth, setSelectedMonth] = useState(new Date().getMonth() + 1)
+  const [currentUser, setCurrentUser] = useState<GroupMember | null>(groupMembers?.find(member => member.id === user?.id) || null);
+
+  // グループメンバーが2人以上（自分含む）かどうかを判定
+  const hasMultipleMembers = useMemo(() => {
+    return groupMembers && groupMembers.length >= 2;
+  }, [groupMembers]);
 
   // 給料日ベースの期間を計算
   const getPeriodDates = (year: number, month: number, day: number = 1) => {
@@ -136,10 +146,10 @@ export default function Home() {
       year = month === 1 ? year - 1 : year;
       month = month === 1 ? 12 : month - 1;
     }
-    await refreshTransactions(year, month);
+    await refreshTransactions(year, month, currentUser?.id);
   };
 
-  // 取引追加ハンドラ
+  // 取引追加ハンドラ - 常にログインユーザーのIDを使用
   const handleTransactionSubmit = async (data: TransactionInput) => {
     setSaving(true);
     setMessage('');
@@ -149,6 +159,7 @@ export default function Home() {
         setMessage('ユーザー情報が取得できません。再ログインしてください。');
         return;
       }
+      // 必ずログインユーザーのIDでトランザクションを追加
       const newTransaction = await FinanceService.addTransaction(user.id, data);
 
       if (newTransaction) {
@@ -160,7 +171,8 @@ export default function Home() {
           year = month === 1 ? year - 1 : year;
           month = month === 1 ? 12 : month - 1;
         }
-        await refreshTransactions(year, month);
+        // 現在表示中のユーザーのトランザクションを再取得
+        await refreshTransactions(year, month, currentUser?.id);
         setTimeout(() => setMessage(''), 3000);
       } else {
         setMessage('追加に失敗しました。もう一度お試しください。');
@@ -177,6 +189,20 @@ export default function Home() {
   const handleTabChange = (tab: 'expense' | 'income') => {
     setActiveTab(tab);
     setSelectedTag('all');
+  };
+
+  // ユーザー切り替えハンドラ
+  const handleSwitchUser = async (userId: string) => {
+    setCurrentUser(groupMembers.find(member => member.id === userId) || null);
+    setMessage('ユーザーを切り替えました');
+    let year = selectedYear;
+      let month = selectedMonth;
+      if (salaryDay !== 1) {
+        year = month === 1 ? year - 1 : year;
+        month = month === 1 ? 12 : month - 1;
+      }
+    await refreshTransactions(year, month, userId);
+    setTimeout(() => setMessage(''), 3000);
   };
 
   useEffect(() => {
@@ -204,6 +230,11 @@ export default function Home() {
     setSelectedYear(year);
     setSelectedMonth(month);
   }, [userProfile?.salary_day]);
+
+  useEffect(() => {
+    if (!user || !groupMembers) return;
+    setCurrentUser(groupMembers?.find(member => member.id === user?.id) || null);
+  }, [groupMembers])
 
   // データ初期化監視
   useEffect(() => {
@@ -292,6 +323,15 @@ export default function Home() {
         onTabChange={handleTabChange}
         onTagChange={setSelectedTag}
       />
+
+      {/* ユーザー切り替えボタン */}
+      {userGroup && hasMultipleMembers && currentUser &&(
+        <UserSwitcher
+          groupMembers={groupMembers}
+          currentUser={currentUser}
+          onSwitchUser={handleSwitchUser}
+        />
+      )}
 
       {/* 浮動追加ボタン */}
       <button
