@@ -10,18 +10,22 @@ import BudgetProgress from "@/components/home/BudgetProgress";
 import TransactionList from "@/components/home/TransactionList";
 import TransactionModal from "@/components/home/TransactionModal";
 import { generateExpenseByTag } from "@/utils/chartHelpers";
-import { Transaction, TransactionInput } from "@/types/transaction";
+import { TransactionInput } from "@/types/transaction";
 import { FinanceService } from "@/services/financeService";
 
 export default function Home() {
   const {
     user,
     userFinance,
+    userProfile,
     transactions,
     loading,
     refreshTransactions,
     refreshAll,
   } = useUser();
+
+  // 給料日（デフォルトは1日）
+  const salaryDay = userProfile?.salary_day || 1;
 
   // 状態管理
   const [showInputModal, setShowInputModal] = useState(false);
@@ -29,25 +33,66 @@ export default function Home() {
   const [message, setMessage] = useState('');
   const [activeTab, setActiveTab] = useState<'expense' | 'income'>('expense');
   const [selectedTag, setSelectedTag] = useState<string>('all');
-  const [selectedYear, setSelectedYear] = useState(new Date().getFullYear());
-  const [selectedMonth, setSelectedMonth] = useState(new Date().getMonth() + 1);
+  const [selectedYear, setSelectedYear] = useState(new Date().getFullYear())
+  const [selectedMonth, setSelectedMonth] = useState(new Date().getMonth() + 1)
+
+  // 給料日ベースの期間を計算
+  const getPeriodDates = (year: number, month: number, day: number = 1) => {
+    if (day === 1) {
+      // 給料日が1日の場合は通常の月表示
+      return {
+        startDate: new Date(year, month - 1, 1, 0, 0, 0),
+        endDate: new Date(year, month, 0, 23, 59, 59)
+      };
+    }
+
+    // 開始日: 前月の給料日
+    const prevMonth = month === 1 ? 12 : month - 1;
+    const prevYear = month === 1 ? year - 1 : year;
+    const startDate = new Date(prevYear, prevMonth - 1, day, 0, 0, 0);
+    
+    // 終了日: 当月の給料日前日
+    const endDate = new Date(year, month - 1, day - 1, 23, 59, 59);
+    
+    // 給料日が月末より大きい場合の調整
+    if (day > new Date(year, month, 0).getDate()) {
+      endDate.setDate(new Date(year, month, 0).getDate());
+    }
+    
+    return { startDate, endDate };
+  };
 
   // 月別統計データ
   const monthlyStats = transactions.length > 0
-    ? FinanceService.getMonthlyStats(transactions, selectedYear, selectedMonth)
+    ? FinanceService.getMonthlyStats(transactions, selectedYear, selectedMonth, salaryDay)
     : { income: 0, expense: 0, balance: 0 };
 
   // 選択された月の取引データを取得
   const currentMonthTransactions = useMemo(() => {
-    const startDate = new Date(selectedYear, selectedMonth - 1, 1);
-    const endDate = new Date(selectedYear, selectedMonth, 0, 23, 59, 59);
+    const { startDate, endDate } = getPeriodDates(selectedYear, selectedMonth, salaryDay);
 
     return transactions.filter(transaction => {
       const dateToUse = transaction.date || transaction.created_at;
       const transactionDate = new Date(dateToUse);
-      return transactionDate >= startDate && transactionDate <= endDate;
+      
+      // 日付の比較で、同じ日付（時間差あり）もカバーするための調整
+      const transactionDateOnly = new Date(
+        transactionDate.getFullYear(),
+        transactionDate.getMonth(),
+        transactionDate.getDate(),
+        0, 0, 0
+      );
+      const startDateOnly = new Date(
+        startDate.getFullYear(),
+        startDate.getMonth(),
+        startDate.getDate(),
+        0, 0, 0
+      );
+      
+      // 開始日を含み、終了日を含む範囲で比較
+      return transactionDateOnly >= startDateOnly && transactionDate <= endDate;
     });
-  }, [transactions, selectedYear, selectedMonth]);
+  }, [transactions, selectedYear, selectedMonth, salaryDay]);
 
   // 支出タグごとの集計データ
   const expenseByTag = useMemo(() =>
@@ -86,6 +131,11 @@ export default function Home() {
   const handleMonthChange = async (year: number, month: number) => {
     setSelectedYear(year);
     setSelectedMonth(month);
+    if (salaryDay !== 1)
+    {
+      year = month === 1 ? year - 1 : year;
+      month = month === 1 ? 12 : month - 1;
+    }
     await refreshTransactions(year, month);
   };
 
@@ -104,7 +154,13 @@ export default function Home() {
       if (newTransaction) {
         setShowInputModal(false);
         setMessage('収支を追加しました');
-        await refreshTransactions(selectedYear, selectedMonth);
+        let year = selectedYear;
+        let month = selectedMonth;
+        if (salaryDay !== 1) {
+          year = month === 1 ? year - 1 : year;
+          month = month === 1 ? 12 : month - 1;
+        }
+        await refreshTransactions(year, month);
         setTimeout(() => setMessage(''), 3000);
       } else {
         setMessage('追加に失敗しました。もう一度お試しください。');
@@ -122,6 +178,32 @@ export default function Home() {
     setActiveTab(tab);
     setSelectedTag('all');
   };
+
+  useEffect(() => {
+    const getCurrentPeriod = () => {
+        const now = new Date();
+        let year = now.getFullYear();
+        let month = now.getMonth() + 1; // JavaScriptの月は0から始まるので+1
+        
+        if (salaryDay > 1) {
+            const currentDay = now.getDate();
+            
+            // 現在が給料日以降なら、次の月度に
+            if (currentDay >= salaryDay) {
+                month += 1;
+                if (month > 12) {
+                    month = 1;
+                    year += 1;
+                }
+            }
+        }
+        
+        return { year, month };
+    };
+    const { year, month } = getCurrentPeriod();
+    setSelectedYear(year);
+    setSelectedMonth(month);
+  }, [userProfile?.salary_day]);
 
   // データ初期化監視
   useEffect(() => {
@@ -170,6 +252,7 @@ export default function Home() {
       <MonthSelector
         selectedYear={selectedYear}
         selectedMonth={selectedMonth}
+        salaryDay={salaryDay}
         onMonthChange={handleMonthChange}
       />
 
@@ -179,7 +262,8 @@ export default function Home() {
           year={selectedYear}
           month={selectedMonth}
           stats={monthlyStats}
-          transactionCount={transactions.length}
+          transactionCount={currentMonthTransactions.length}
+          salaryDay={salaryDay}
         />
 
         {/* 支出内訳 */}

@@ -91,7 +91,7 @@ export class FinanceService {
         return result || false;
     }
 
-    static async fetchTransactions(userId: string, year?: number, month?: number): Promise<UserTransaction[]> {
+    static async fetchTransactions(userId: string, year?: number, month?: number, salary_day: number = 1): Promise<UserTransaction[]> {
         const result = await retryWithBackoff(async () => {
             let query = supabase
                 .from('transactions')
@@ -99,16 +99,18 @@ export class FinanceService {
                 .eq('created_by', userId);
 
             if (year && month) {
-                const startDate = new Date(year, month - 1, 1).toISOString().split('T')[0];
-                const endDate = new Date(year, month, 0).toISOString().split('T')[0];
+                const startDate = new Date(year, month - 1, salary_day + 1).toISOString().split('T')[0];
+                const endDate = new Date(year, month, salary_day).toISOString().split('T')[0];
+
+                console.log(startDate, endDate);
                 
                 try {
                     query = query
                         .gte('date', startDate)
                         .lte('date', endDate);
                 } catch (error) {
-                    const startDateTime = new Date(year, month - 1, 1).toISOString();
-                    const endDateTime = new Date(year, month, 0, 23, 59, 59).toISOString();
+                    const startDateTime = new Date(year, month - 1, salary_day).toISOString();
+                    const endDateTime = new Date(year, month, salary_day - 1, 23, 59, 59).toISOString();
                     query = query
                         .gte('created_at', startDateTime)
                         .lte('created_at', endDateTime);
@@ -170,14 +172,50 @@ export class FinanceService {
         return result || false;
     }
 
-    static getMonthlyStats(transactions: UserTransaction[], year: number, month: number) {
-        const startDate = new Date(year, month - 1, 1);
-        const endDate = new Date(year, month, 0, 23, 59, 59);
+    static getMonthlyStats(transactions: UserTransaction[], year: number, month: number, salaryDay: number = 1) {
+        // 給料日ベースでの期間計算
+        let startDate, endDate;
+        
+        if (salaryDay === 1) {
+            // 給料日が1日の場合は通常の月の初めから月末
+            startDate = new Date(year, month - 1, 1, 0, 0, 0);
+            endDate = new Date(year, month, 0, 23, 59, 59);
+        } else {
+            // 給料日ベースの期間
+            // 開始: 当月の給料日
+            const prevMonth = month === 1 ? 12 : month - 1;
+            const prevYear = month === 1 ? year - 1 : year;
+            startDate = new Date(prevYear, prevMonth - 1, salaryDay, 0, 0, 0);
+            
+            // 終了: 翌月の給料日前日
+            endDate = new Date(year, month - 1, salaryDay - 1, 23, 59, 59);
+            
+            // 給料日が月末より大きい場合の調整
+            if (salaryDay > new Date(year, month, 0).getDate()) {
+                endDate = new Date(year, month, 0, 23, 59, 59);
+            }
+        }
 
         const monthlyTransactions = transactions.filter(transaction => {
             const dateToUse = transaction.date || transaction.created_at;
             const transactionDate = new Date(dateToUse);
-            return transactionDate >= startDate && transactionDate <= endDate;
+            
+            // 日付の比較で、同じ日付（時間差あり）もカバーするための調整
+            const transactionDateOnly = new Date(
+                transactionDate.getFullYear(),
+                transactionDate.getMonth(),
+                transactionDate.getDate(),
+                0, 0, 0
+            );
+            const startDateOnly = new Date(
+                startDate.getFullYear(),
+                startDate.getMonth(),
+                startDate.getDate(),
+                0, 0, 0
+            );
+            
+            // 開始日を含み、終了日を含む範囲で比較
+            return transactionDateOnly >= startDateOnly && transactionDate <= endDate;
         });
 
         const income = monthlyTransactions
