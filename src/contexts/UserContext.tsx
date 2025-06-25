@@ -101,8 +101,8 @@ export function UserProvider({ children }: { children: ReactNode }) {
 
     // 現在月の取引を取得する関数
     const refreshTransactions = async (year: number, month: number) => {
-        if (!user) return;
-        const transactions = await FinanceService.fetchTransactions(user.id, year, month);
+        if (!user || !userProfile) return;
+        const transactions = await FinanceService.fetchTransactions(user.id, year, month, userProfile.salary_day);
         setTransactions(transactions);
     };
 
@@ -259,14 +259,18 @@ export function UserProvider({ children }: { children: ReactNode }) {
                 const currentDate = new Date();
 
                 // 並列でデータを取得してパフォーマンスを向上
-                const [profile, settings, finance, costs, userTransactions, userGroup] = await Promise.all([
+                const [profile, settings, finance, costs, userGroup] = await Promise.all([
                     UserService.fetchUserProfile(user.id),
                     UserService.fetchNotificationSettings(user.id),
                     FinanceService.fetchUserFinance(user.id),
                     FinanceService.fetchFixedCosts(user.id),
-                    FinanceService.fetchTransactions(user.id, currentDate.getFullYear(), currentDate.getMonth() + 1),
                     GroupService.fetchUserGroup(user.id)
                 ]);
+                
+                let salaryDay = profile?.salary_day || 1; // デフォルトの給料日を25日に設定
+                let year = currentDate.getFullYear();
+                let month = currentDate.getMonth() + 1; // 月は0から始
+                const userTransactions = await FinanceService.fetchTransactions(user.id, year, month, salaryDay);
                 
                 let members: GroupMember[] = [];
                 // グループが取得できた場合はメンバーも取得
