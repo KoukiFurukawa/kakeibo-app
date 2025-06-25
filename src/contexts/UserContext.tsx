@@ -22,7 +22,7 @@ interface UserContextType {
     refreshNotificationSettings: () => Promise<void>;
     refreshUserFinance: () => Promise<void>;
     refreshFixedCosts: () => Promise<void>;
-    refreshTransactions: (year: number, month: number) => Promise<void>;
+    refreshTransactions: (year: number, month: number, userId: string | undefined) => Promise<void>;
     refreshUserGroup: () => Promise<void>;
     refreshAll: () => Promise<void>;
 }
@@ -100,9 +100,9 @@ export function UserProvider({ children }: { children: ReactNode }) {
     };
 
     // 現在月の取引を取得する関数
-    const refreshTransactions = async (year: number, month: number) => {
-        if (!user || !userProfile) return;
-        const transactions = await FinanceService.fetchTransactions(user.id, year, month, userProfile.salary_day);
+    const refreshTransactions = async (year: number, month: number, userId: string | undefined = user?.id) => {
+        if (!user || !userProfile || !userId) return;
+        const transactions = await FinanceService.fetchTransactions(userId, year, month, userProfile.salary_day);
         setTransactions(transactions);
     };
 
