@@ -36,10 +36,6 @@ export default function Home() {
   const [selectedYear, setSelectedYear] = useState(new Date().getFullYear())
   const [selectedMonth, setSelectedMonth] = useState(new Date().getMonth() + 1)
 
-  console.log("salaryDay:", salaryDay);
-  console.log('Selected Year:', selectedYear);
-  console.log('Selected Month:', selectedMonth);
-
   // 給料日ベースの期間を計算
   const getPeriodDates = (year: number, month: number, day: number = 1) => {
     if (day === 1) {
