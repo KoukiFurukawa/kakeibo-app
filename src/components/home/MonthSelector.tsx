@@ -1,14 +1,38 @@
 interface MonthSelectorProps {
     selectedYear: number;
     selectedMonth: number;
+    salaryDay: number; // 給料日（デフォルトは1日）
     onMonthChange: (year: number, month: number) => Promise<void>;
 }
 
 const MonthSelector: React.FC<MonthSelectorProps> = ({
     selectedYear,
     selectedMonth,
+    salaryDay, // 給料日
     onMonthChange
 }) => {
+    // 現在の日付に基づいて適切な月度を計算する関数
+    const getCurrentPeriod = () => {
+        const now = new Date();
+        let year = now.getFullYear();
+        let month = now.getMonth() + 1; // JavaScriptの月は0から始まるので+1
+        
+        if (salaryDay > 1) {
+            const currentDay = now.getDate();
+            
+            // 現在が給料日以降なら、次の月度に
+            if (currentDay >= salaryDay) {
+                month += 1;
+                if (month > 12) {
+                    month = 1;
+                    year += 1;
+                }
+            }
+        }
+        
+        return { year, month };
+    };
+    
     return (
         <div className="bg-white p-4 rounded-lg shadow-md">
             <div className="flex items-center justify-between">
@@ -41,14 +65,14 @@ const MonthSelector: React.FC<MonthSelectorProps> = ({
                     >
                         {Array.from({ length: 12 }, (_, i) => (
                             <option key={i + 1} value={i + 1}>
-                                {i + 1}月
+                                {i + 1}月度
                             </option>
                         ))}
                     </select>
                     <button
                         onClick={async () => {
-                            const now = new Date();
-                            await onMonthChange(now.getFullYear(), now.getMonth() + 1);
+                            const { year, month } = getCurrentPeriod();
+                            await onMonthChange(year, month);
                         }}
                         className="px-3 py-2 bg-blue-500 text-white rounded-md text-sm hover:bg-blue-600"
                     >
