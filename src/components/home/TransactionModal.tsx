@@ -28,20 +28,6 @@ const TransactionModal: React.FC<TransactionModalProps> = ({
         '食費', '日用品', '交通費', '娯楽', '衣服', '医療', '住居', '水道光熱費', '通信費', '教育', '給料', 'その他'
     ];
     
-    // 編集モードの場合、データをフォームに設定
-    useEffect(() => {
-        if (editTransaction) {
-            setInputType(editTransaction.is_income ? 'income' : 'expense');
-            setInputTitle(editTransaction.title || '');
-            setInputDescription(editTransaction.description || '');
-            setInputAmount(editTransaction.amount.toString());
-            setInputTag(editTransaction.tag || '');
-            setInputDate(editTransaction.date || new Date().toISOString().split('T')[0]);
-        } else {
-            resetForm();
-        }
-    }, [editTransaction]);
-
     const refreshSession = async () => {
         try {
             console.log('セッションを更新しています...');
@@ -162,6 +148,20 @@ const TransactionModal: React.FC<TransactionModalProps> = ({
         resetForm();
         onClose();
     };
+
+    // 編集モードの場合、データをフォームに設定
+    useEffect(() => {
+        if (editTransaction) {
+            setInputType(editTransaction.is_income ? 'income' : 'expense');
+            setInputTitle(editTransaction.title || '');
+            setInputDescription(editTransaction.description || '');
+            setInputAmount(editTransaction.amount.toString());
+            setInputTag(editTransaction.tag || '');
+            setInputDate(editTransaction.date || new Date().toISOString().split('T')[0]);
+        } else {
+            resetForm();
+        }
+    }, [editTransaction]);
 
     if (!isOpen) return null;
 

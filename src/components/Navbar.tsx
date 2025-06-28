@@ -25,15 +25,7 @@ const Navbar = () => {
         { name: 'カレンダー', path: '/calendar' },
         { name: '設定', path: '/settings' },
     ];
-
-    // 通知モーダルを開いたときに通知を既読にする
-    useEffect(() => {
-        if (isNotificationOpen && unreadCount > 0) {
-            // モーダルを開いたら全ての通知を既読にする
-            markAllAsRead();
-        }
-    }, [isNotificationOpen, unreadCount, markAllAsRead]);
-
+    
     // 現在のページ名を取得する関数（サブパスにも対応）
     const getCurrentPageName = () => {
         // 設定系のサブページ用の詳細なマッピング
@@ -49,12 +41,12 @@ const Navbar = () => {
             '/calendar': 'カレンダー',
             '/': 'ホーム'
         };
-
+        
         // 完全一致を最初にチェック
         if (detailedMapping[pathname]) {
             return detailedMapping[pathname];
         }
-
+        
         // 部分一致でチェック（長いパスから順番に）
         const sortedPaths = Object.keys(detailedMapping).sort((a, b) => b.length - a.length);
         for (const path of sortedPaths) {
@@ -62,17 +54,17 @@ const Navbar = () => {
                 return detailedMapping[path];
             }
         }
-
+        
         // デフォルトはホーム
         return 'ホーム';
     };
-
+    
     // 日付をフォーマットする関数
     const formatDate = (dateStr: string) => {
         const date = new Date(dateStr);
         return date.toLocaleDateString('ja-JP', { year: 'numeric', month: '2-digit', day: '2-digit' });
     };
-
+    
     // 通知の種類に応じたクラスを返す関数
     const getNotificationTypeClass = (type: string) => {
         switch (type) {
@@ -83,13 +75,21 @@ const Navbar = () => {
             default: return 'bg-blue-100 text-blue-800 border-blue-200';
         }
     };
-
+    
     const handleLogout = useHandleLogout();
-
+    
     const handleNotificationClick = (id: string) => {
         // 既に既読かもしれないが、念のため既読にする
         markAsRead(id);
     };
+    
+    // 通知モーダルを開いたときに通知を既読にする
+    useEffect(() => {
+        if (isNotificationOpen && unreadCount > 0) {
+            // モーダルを開いたら全ての通知を既読にする
+            markAllAsRead();
+        }
+    }, [isNotificationOpen, unreadCount, markAllAsRead]);
 
     // ローディング中の表示
     if (loading) {

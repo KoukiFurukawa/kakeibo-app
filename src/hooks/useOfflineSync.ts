@@ -20,35 +20,6 @@ export function useOfflineSync() {
   const [pendingOperations, setPendingOperations] = useState<PendingOperation[]>([]);
   const [isSyncing, setIsSyncing] = useState(false);
 
-  // ローカルストレージから保留中の操作を読み込み
-  useEffect(() => {
-    if (typeof window !== 'undefined') {
-      const saved = localStorage.getItem(STORAGE_KEY);
-      if (saved) {
-        try {
-          setPendingOperations(JSON.parse(saved));
-        } catch (error) {
-          console.error('保留中の操作の読み込みエラー:', error);
-          localStorage.removeItem(STORAGE_KEY);
-        }
-      }
-    }
-  }, []);
-
-  // 保留中の操作をローカルストレージに保存
-  useEffect(() => {
-    if (typeof window !== 'undefined') {
-      localStorage.setItem(STORAGE_KEY, JSON.stringify(pendingOperations));
-    }
-  }, [pendingOperations]);
-
-  // オンラインになった時に同期を実行
-  useEffect(() => {
-    if (isOnline && pendingOperations.length > 0 && user && !isSyncing) {
-      syncPendingOperations();
-    }
-  }, [isOnline, pendingOperations.length, user, isSyncing]);
-
   // 保留中の操作を追加
   const addPendingOperation = (operation: Omit<PendingOperation, 'id' | 'timestamp'>) => {
     const newOperation: PendingOperation = {
@@ -97,6 +68,35 @@ export function useOfflineSync() {
   const clearPendingOperations = () => {
     setPendingOperations([]);
   };
+
+  // ローカルストレージから保留中の操作を読み込み
+  useEffect(() => {
+    if (typeof window !== 'undefined') {
+      const saved = localStorage.getItem(STORAGE_KEY);
+      if (saved) {
+        try {
+          setPendingOperations(JSON.parse(saved));
+        } catch (error) {
+          console.error('保留中の操作の読み込みエラー:', error);
+          localStorage.removeItem(STORAGE_KEY);
+        }
+      }
+    }
+  }, []);
+
+  // 保留中の操作をローカルストレージに保存
+  useEffect(() => {
+    if (typeof window !== 'undefined') {
+      localStorage.setItem(STORAGE_KEY, JSON.stringify(pendingOperations));
+    }
+  }, [pendingOperations]);
+
+  // オンラインになった時に同期を実行
+  useEffect(() => {
+    if (isOnline && pendingOperations.length > 0 && user && !isSyncing) {
+      syncPendingOperations();
+    }
+  }, [isOnline, pendingOperations.length, user, isSyncing]);
 
   return {
     pendingOperations,
