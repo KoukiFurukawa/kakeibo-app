@@ -2,7 +2,7 @@ import { TransactionInput, Transaction } from "@/types/transaction";
 import { useState, useEffect } from "react";
 import { supabase } from "@/utils/manage_supabase"; // Import supabase client
 
-interface TransactionModalProps {
+interface ITransactionModalProps {
     isOpen: boolean;
     onClose: () => void;
     onSubmit: (data: TransactionInput) => Promise<void>;
@@ -10,7 +10,7 @@ interface TransactionModalProps {
     editTransaction?: Transaction | null;
 }
 
-const TransactionModal: React.FC<TransactionModalProps> = ({ 
+const TransactionModal: React.FC<ITransactionModalProps> = ({ 
     isOpen, 
     onClose, 
     onSubmit, 

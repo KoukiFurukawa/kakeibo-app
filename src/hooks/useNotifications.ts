@@ -5,7 +5,7 @@ import { supabase } from '@/utils/manage_supabase';
 import { NotificationWithReadStatus } from '@/types/notification';
 import { useUser } from '@/contexts/UserContext';
 
-interface NotificationState {
+interface INotificationState {
   supported: boolean;
   permission: NotificationPermission;
 }
@@ -14,7 +14,7 @@ interface NotificationState {
 const READ_NOTIFICATIONS_KEY = 'kakeibo-read-notifications';
 
 export function useNotifications() {
-  const [state, setState] = useState<NotificationState>({
+  const [state, setState] = useState<INotificationState>({
     supported: false,
     permission: 'default'
   });

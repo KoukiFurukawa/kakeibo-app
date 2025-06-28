@@ -1,4 +1,4 @@
-export interface UserProfile {
+export interface IUserProfile {
     id: string;
     email: string;
     username: string | null;
@@ -8,7 +8,7 @@ export interface UserProfile {
     salary_day?: number;
 }
 
-export interface UserNotificationSettings {
+export interface IUserNotificationSettings {
     id: string;
     todo: boolean;
     system: boolean;
@@ -16,7 +16,7 @@ export interface UserNotificationSettings {
     created_at?: string;
 }
 
-export interface UserFinance {
+export interface IUserFinance {
     savings_goal: number;
     food: number;
     entertainment: number;
@@ -25,7 +25,7 @@ export interface UserFinance {
     other: number;
 }
 
-export interface FixedCost {
+export interface IFixedCost {
     id: string;
     created_by?: string;
     title: string;
@@ -35,7 +35,7 @@ export interface FixedCost {
     created_at?: string;
 }
 
-export interface UserTransaction {
+export interface IUserTransaction {
     id: string;
     created_by: string;
     title: string;
@@ -46,7 +46,7 @@ export interface UserTransaction {
     date: string;
     created_at: string;
 }
-export interface UserGroup {
+export interface IUserGroup {
     id: string;
     group_name: string;
     description?: string;
@@ -55,7 +55,7 @@ export interface UserGroup {
     created_at?: string;
 }
 
-export interface GroupMember {
+export interface IGroupMember {
     id: string;
     username: string | null;
     email: string;
@@ -63,7 +63,7 @@ export interface GroupMember {
     isAdmin: boolean;
 }
 
-export interface GroupInvite {
+export interface IGroupInvite {
     id: string;
     group_id: string;
     code: string;

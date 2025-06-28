@@ -1,13 +1,13 @@
 import { MonthlyStats, PieChartData, UserFinance } from "@/types/transaction";
 import BudgetProgressChart from "./BudgetProgressChart";
 
-interface BudgetProgressProps {
+interface IBudgetProgressProps {
     userFinance: UserFinance | null;
     expenseByTag: PieChartData[];
     monthlyStats: MonthlyStats;
 }
 
-const BudgetProgress: React.FC<BudgetProgressProps> = ({ userFinance, expenseByTag, monthlyStats }) => {
+const BudgetProgress: React.FC<IBudgetProgressProps> = ({ userFinance, expenseByTag, monthlyStats }) => {
     if (!userFinance) return null;
 
     return (

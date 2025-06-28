@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import { UserProfile, GroupMember } from '@/types/user';
 
-interface UserSwitcherProps {
+interface IUserSwitcherProps {
     currentUser: UserProfile | null;
     groupMembers: GroupMember[];
     onSwitchUser: (userId: string) => void;
@@ -11,7 +11,7 @@ export default function UserSwitcher({
     currentUser,
     groupMembers,
     onSwitchUser
-}: UserSwitcherProps) {
+}: IUserSwitcherProps) {
     const [showModal, setShowModal] = useState(false);
 
     // 現在のユーザー以外のメンバーを取得

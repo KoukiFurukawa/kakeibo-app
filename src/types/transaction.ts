@@ -1,4 +1,4 @@
-export interface Transaction {
+export interface ITransaction {
     id: string;
     title: string;
     description?: string;
@@ -9,19 +9,19 @@ export interface Transaction {
     created_at: string;
 }
 
-export interface MonthlyStats {
+export interface IMonthlyStats {
     income: number;
     expense: number;
     balance: number;
 }
 
-export interface PieChartData {
+export interface IPieChartData {
     label: string;
     value: number;
     color: string;
 }
 
-export interface TransactionInput {
+export interface ITransactionInput {
     title: string;
     description: string;
     amount: number;
@@ -30,7 +30,7 @@ export interface TransactionInput {
     date: string;
 }
 
-export interface UserFinance {
+export interface IUserFinance {
     id?: string;
     user_id?: string;
     savings_goal: number;

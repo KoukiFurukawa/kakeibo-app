@@ -2,7 +2,7 @@ import { Transaction } from "@/types/transaction";
 import { useState } from "react";
 import { FiEdit2 } from "react-icons/fi"; // React Icons から編集アイコンをインポート
 
-interface TransactionListProps {
+interface ITransactionListProps {
     year: number;
     month: number;
     transactions: Transaction[];
@@ -15,7 +15,7 @@ interface TransactionListProps {
     onEditTransaction?: (transaction: Transaction) => void;
 }
 
-const TransactionList: React.FC<TransactionListProps> = ({
+const TransactionList: React.FC<ITransactionListProps> = ({
     year,
     month,
     transactions,

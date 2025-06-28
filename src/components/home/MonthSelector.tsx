@@ -1,11 +1,11 @@
-interface MonthSelectorProps {
+interface IMonthSelectorProps {
     selectedYear: number;
     selectedMonth: number;
     salaryDay: number; // 給料日（デフォルトは1日）
     onMonthChange: (year: number, month: number) => Promise<void>;
 }
 
-const MonthSelector: React.FC<MonthSelectorProps> = ({
+const MonthSelector: React.FC<IMonthSelectorProps> = ({
     selectedYear,
     selectedMonth,
     salaryDay, // 給料日

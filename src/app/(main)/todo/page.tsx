@@ -2,7 +2,7 @@
 
 import { useState } from 'react';
 
-interface TodoItem {
+interface ITodoItem {
     id: string;
     title: string;
     description: string;
@@ -13,7 +13,7 @@ interface TodoItem {
 }
 
 export default function TodoPage() {
-    const [todos, setTodos] = useState<TodoItem[]>([]);
+    const [todos, setTodos] = useState<ITodoItem[]>([]);
     const [title, setTitle] = useState('');
     const [description, setDescription] = useState('');
     const [dueDate, setDueDate] = useState('');
@@ -35,7 +35,7 @@ export default function TodoPage() {
             ));
             setEditingId(null);
         } else {
-            const newTodo: TodoItem = {
+            const newTodo: ITodoItem = {
                 id: Date.now().toString(),
                 title,
                 description,
@@ -60,7 +60,7 @@ export default function TodoPage() {
         ));
     };
 
-    const handleEdit = (todo: TodoItem) => {
+    const handleEdit = (todo: ITodoItem) => {
         setEditingId(todo.id);
         setTitle(todo.title);
         setDescription(todo.description);

@@ -8,7 +8,7 @@ import { UserService } from '@/services/userService';
 import { FinanceService } from '@/services/financeService';
 import { GroupService } from '@/services/groupService';
 
-interface UserContextType {
+interface IUserContextType {
     user: User | null;
     userProfile: UserProfile | null;
     notificationSettings: UserNotificationSettings | null;
@@ -27,7 +27,7 @@ interface UserContextType {
     refreshAll: () => Promise<void>;
 }
 
-const UserContext = createContext<UserContextType | undefined>(undefined);
+const UserContext = createContext<IUserContextType | undefined>(undefined);
 
 export function UserProvider({ children }: { children: ReactNode }) {
     const [user, setUser] = useState<User | null>(null);
@@ -312,7 +312,7 @@ export function UserProvider({ children }: { children: ReactNode }) {
         };
     }, [user]); // 依存配列を明示的に指定
 
-    const value: UserContextType = {
+    const value: IUserContextType = {
         user,
         userProfile,
         notificationSettings,
