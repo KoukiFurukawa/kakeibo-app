@@ -5,7 +5,7 @@ import { supabase } from '@/utils/manage_supabase';
 import { NotificationWithReadStatus } from '@/types/notification';
 import { useUser } from '@/contexts/UserContext';
 
-interface NotificationState {
+interface INotificationState {
   supported: boolean;
   permission: NotificationPermission;
 }
@@ -14,7 +14,7 @@ interface NotificationState {
 const READ_NOTIFICATIONS_KEY = 'kakeibo-read-notifications';
 
 export function useNotifications() {
-  const [state, setState] = useState<NotificationState>({
+  const [state, setState] = useState<INotificationState>({
     supported: false,
     permission: 'default'
   });
@@ -23,15 +23,8 @@ export function useNotifications() {
   const [error, setError] = useState<string | null>(null);
   const { user } = useUser();
 
-  // ブラウザ通知APIの対応チェック
-  useEffect(() => {
-    if (typeof window !== 'undefined' && 'Notification' in window) {
-      setState({
-        supported: true,
-        permission: Notification.permission
-      });
-    }
-  }, []);
+    // 未読の通知数を取得
+  const unreadCount = notifications.filter(n => !n.is_read).length;
 
   // ローカルストレージから既読状態を取得
   const getReadNotifications = (): string[] => {
@@ -185,15 +178,6 @@ export function useNotifications() {
     }
   };
 
-  // ユーザーが変わったら通知を再取得
-  useEffect(() => {
-    if (user) {
-      fetchNotifications();
-    } else {
-      setNotifications([]);
-    }
-  }, [user]);
-
   // 通知許可のリクエスト
   const requestPermission = async (): Promise<boolean> => {
     if (!state.supported) return false;
@@ -234,8 +218,24 @@ export function useNotifications() {
     }
   };
 
-  // 未読の通知数を取得
-  const unreadCount = notifications.filter(n => !n.is_read).length;
+  // ブラウザ通知APIの対応チェック
+  useEffect(() => {
+    if (typeof window !== 'undefined' && 'Notification' in window) {
+      setState({
+        supported: true,
+        permission: Notification.permission
+      });
+    }
+  }, []);
+
+  // ユーザーが変わったら通知を再取得
+  useEffect(() => {
+    if (user) {
+      fetchNotifications();
+    } else {
+      setNotifications([]);
+    }
+  }, [user]);
 
   return {
     ...state,

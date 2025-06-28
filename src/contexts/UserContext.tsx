@@ -3,21 +3,21 @@
 import React, { createContext, useContext, useState, useEffect, ReactNode, useCallback } from 'react';
 import { User } from '@supabase/supabase-js';
 import { supabase } from '@/utils/manage_supabase';
-import { UserProfile, UserNotificationSettings, UserFinance, FixedCost, UserTransaction, UserGroup, GroupMember } from '@/types/user';
+import { IUserProfile, IUserNotificationSettings, IUserFinance, IFixedCost, IUserTransaction, IUserGroup, IGroupMember } from '@/types/user';
 import { UserService } from '@/services/userService';
 import { FinanceService } from '@/services/financeService';
 import { GroupService } from '@/services/groupService';
 
-interface UserContextType {
+interface IUserContextType {
     user: User | null;
-    userProfile: UserProfile | null;
-    notificationSettings: UserNotificationSettings | null;
-    userFinance: UserFinance | null;
-    fixedCosts: FixedCost[];
-    transactions: UserTransaction[];
+    userProfile: IUserProfile | null;
+    notificationSettings: IUserNotificationSettings | null;
+    userFinance: IUserFinance | null;
+    fixedCosts: IFixedCost[];
+    transactions: IUserTransaction[];
     loading: boolean;
-    userGroup: UserGroup | null;
-    groupMembers: GroupMember[];
+    userGroup: IUserGroup | null;
+    groupMembers: IGroupMember[];
     refreshUserProfile: () => Promise<void>;
     refreshNotificationSettings: () => Promise<void>;
     refreshUserFinance: () => Promise<void>;
@@ -27,18 +27,18 @@ interface UserContextType {
     refreshAll: () => Promise<void>;
 }
 
-const UserContext = createContext<UserContextType | undefined>(undefined);
+const UserContext = createContext<IUserContextType | undefined>(undefined);
 
 export function UserProvider({ children }: { children: ReactNode }) {
     const [user, setUser] = useState<User | null>(null);
 
-    const [userProfile, setUserProfile] = useState<UserProfile | null>(null);
-    const [notificationSettings, setNotificationSettings] = useState<UserNotificationSettings | null>(null);
-    const [userFinance, setUserFinance] = useState<UserFinance | null>(null);
-    const [fixedCosts, setFixedCosts] = useState<FixedCost[]>([]);
-    const [transactions, setTransactions] = useState<UserTransaction[]>([]);
-    const [userGroup, setUserGroup] = useState<UserGroup | null>(null);
-    const [groupMembers, setGroupMembers] = useState<GroupMember[]>([]);
+    const [userProfile, setUserProfile] = useState<IUserProfile | null>(null);
+    const [notificationSettings, setNotificationSettings] = useState<IUserNotificationSettings | null>(null);
+    const [userFinance, setUserFinance] = useState<IUserFinance | null>(null);
+    const [fixedCosts, setFixedCosts] = useState<IFixedCost[]>([]);
+    const [transactions, setTransactions] = useState<IUserTransaction[]>([]);
+    const [userGroup, setUserGroup] = useState<IUserGroup | null>(null);
+    const [groupMembers, setGroupMembers] = useState<IGroupMember[]>([]);
 
     const [loading, setLoading] = useState(true);
     const [sessionCheckInterval, setSessionCheckInterval] = useState<NodeJS.Timeout | null>(null);
@@ -272,7 +272,7 @@ export function UserProvider({ children }: { children: ReactNode }) {
                 let month = currentDate.getMonth() + 1; // 月は0から始
                 const userTransactions = await FinanceService.fetchTransactions(user.id, year, month, salaryDay);
                 
-                let members: GroupMember[] = [];
+                let members: IGroupMember[] = [];
                 // グループが取得できた場合はメンバーも取得
                 if (userGroup) {
                     members = await GroupService.fetchGroupMembers(userGroup.id, user.id);
@@ -312,7 +312,7 @@ export function UserProvider({ children }: { children: ReactNode }) {
         };
     }, [user]); // 依存配列を明示的に指定
 
-    const value: UserContextType = {
+    const value: IUserContextType = {
         user,
         userProfile,
         notificationSettings,

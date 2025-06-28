@@ -11,9 +11,10 @@ import TransactionList from "@/components/home/TransactionList";
 import TransactionModal from "@/components/home/TransactionModal";
 import UserSwitcher from "@/components/home/UserSwitcher";
 import { generateExpenseByTag } from "@/utils/chartHelpers";
-import { TransactionInput } from "@/types/transaction";
+import { ITransactionInput } from "@/types/transaction";
 import { FinanceService } from "@/services/financeService";
-import { GroupMember } from "@/types/user";
+import { IGroupMember } from "@/types/user";
+import { ITransaction } from "@/types/transaction";
 
 export default function Home() {
   const {
@@ -39,7 +40,8 @@ export default function Home() {
   const [selectedTag, setSelectedTag] = useState<string>('all');
   const [selectedYear, setSelectedYear] = useState(new Date().getFullYear())
   const [selectedMonth, setSelectedMonth] = useState(new Date().getMonth() + 1)
-  const [currentUser, setCurrentUser] = useState<GroupMember | null>(groupMembers?.find(member => member.id === user?.id) || null);
+  const [currentUser, setCurrentUser] = useState<IGroupMember | null>(groupMembers?.find(member => member.id === user?.id) || null);
+  const [editingTransaction, setEditingTransaction] = useState<ITransaction | null>(null);
 
   // グループメンバーが2人以上（自分含む）かどうかを判定
   const hasMultipleMembers = useMemo(() => {
@@ -150,7 +152,7 @@ export default function Home() {
   };
 
   // 取引追加ハンドラ - 常にログインユーザーのIDを使用
-  const handleTransactionSubmit = async (data: TransactionInput) => {
+  const handleTransactionSubmit = async (data: ITransactionInput) => {
     setSaving(true);
     setMessage('');
 
@@ -159,30 +161,62 @@ export default function Home() {
         setMessage('ユーザー情報が取得できません。再ログインしてください。');
         return;
       }
-      // 必ずログインユーザーのIDでトランザクションを追加
-      const newTransaction = await FinanceService.addTransaction(user.id, data);
 
-      if (newTransaction) {
+      let success = false;
+
+      // 編集モードと追加モードを分岐
+      if (editingTransaction) {
+        // 編集モード
+        success = await FinanceService.updateTransaction(user.id, editingTransaction.id, data);
+        if (success) {
+          setMessage('収支を更新しました');
+        } else {
+          setMessage('更新に失敗しました。もう一度お試しください。');
+        }
+      } else {
+        // 新規追加モード
+        const newTransaction = await FinanceService.addTransaction(user.id, data);
+        success = !!newTransaction;
+        if (success) {
+          setMessage('収支を追加しました');
+        } else {
+          setMessage('追加に失敗しました。もう一度お試しください。');
+        }
+      }
+
+      if (success) {
         setShowInputModal(false);
-        setMessage('収支を追加しました');
+        setEditingTransaction(null);
+        
         let year = selectedYear;
         let month = selectedMonth;
         if (salaryDay !== 1) {
           year = month === 1 ? year - 1 : year;
           month = month === 1 ? 12 : month - 1;
         }
+        
         // 現在表示中のユーザーのトランザクションを再取得
         await refreshTransactions(year, month, currentUser?.id);
         setTimeout(() => setMessage(''), 3000);
-      } else {
-        setMessage('追加に失敗しました。もう一度お試しください。');
       }
     } catch (error) {
-      console.error('収支追加エラー:', error);
-      setMessage('追加に失敗しました。もう一度お試しください。');
+      console.error('収支操作エラー:', error);
+      setMessage(editingTransaction ? '更新に失敗しました' : '追加に失敗しました。もう一度お試しください。');
     } finally {
       setSaving(false);
     }
+  };
+
+  // 編集モードを開始
+  const handleEditTransaction = (transaction: ITransaction) => {
+    setEditingTransaction(transaction);
+    setShowInputModal(true);
+  };
+
+  // モーダルを閉じる時に編集状態もクリア
+  const handleCloseModal = () => {
+    setShowInputModal(false);
+    setEditingTransaction(null);
   };
 
   // タブ変更ハンドラ
@@ -322,6 +356,7 @@ export default function Home() {
         loading={loading}
         onTabChange={handleTabChange}
         onTagChange={setSelectedTag}
+        onEditTransaction={handleEditTransaction}
       />
 
       {/* ユーザー切り替えボタン */}
@@ -346,9 +381,10 @@ export default function Home() {
       {/* 収支入力モーダル */}
       <TransactionModal
         isOpen={showInputModal}
-        onClose={() => setShowInputModal(false)}
+        onClose={handleCloseModal}
         onSubmit={handleTransactionSubmit}
         saving={saving}
+        editTransaction={editingTransaction}
       />
     </div>
   );

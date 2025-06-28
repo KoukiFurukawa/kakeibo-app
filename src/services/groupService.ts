@@ -1,9 +1,9 @@
 import { supabase } from '@/utils/manage_supabase';
-import { UserGroup, GroupMember } from '@/types/user';
+import { IUserGroup, IGroupMember } from '@/types/user';
 import { retryWithBackoff } from '@/utils/retryWithBackoff';
 
 export class GroupService {
-    static async fetchUserGroup(userId: string): Promise<UserGroup | null> {
+    static async fetchUserGroup(userId: string): Promise<IUserGroup | null> {
         try {
             const { data: userData, error: userError } = await supabase
                 .from('users')
@@ -33,7 +33,7 @@ export class GroupService {
         }
     }
 
-    static async createUserGroup(userId: string, groupData: Omit<UserGroup, 'id' | 'created_at'>): Promise<UserGroup | null> {
+    static async createUserGroup(userId: string, groupData: Omit<IUserGroup, 'id' | 'created_at'>): Promise<IUserGroup | null> {
         try {
             const { data: userData, error: userError } = await supabase
                 .from('users')
@@ -72,7 +72,7 @@ export class GroupService {
         }
     }
 
-    static async updateUserGroup(userId: string, groupId: string, updates: Partial<UserGroup>): Promise<UserGroup | null> {
+    static async updateUserGroup(userId: string, groupId: string, updates: Partial<IUserGroup>): Promise<IUserGroup | null> {
         try {
             const { data, error } = await supabase
                 .from('groups')
@@ -90,7 +90,7 @@ export class GroupService {
         }
     }
 
-    static async fetchGroupMembers(groupId: string, author_user_id: string | null = null): Promise<GroupMember[]> {
+    static async fetchGroupMembers(groupId: string, author_user_id: string | null = null): Promise<IGroupMember[]> {
         try {
             const { data, error } = await supabase
                 .from('users')
@@ -220,7 +220,7 @@ export class GroupService {
         }
     }
 
-    static async leaveGroup(userId: string, userGroup: UserGroup): Promise<boolean> {
+    static async leaveGroup(userId: string, userGroup: IUserGroup): Promise<boolean> {
         try {
             // 管理者(admin)の場合はグループ全体を削除
             if (userId === userGroup.author_user_id) {

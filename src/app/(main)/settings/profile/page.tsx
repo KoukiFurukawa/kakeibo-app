@@ -14,13 +14,6 @@ export default function ProfileSettingsPage() {
     const [message, setMessage] = useState('');
     const handleLogout = useHandleLogout();
 
-    // ユーザープロフィールが読み込まれたら初期値を設定
-    useEffect(() => {
-        if (userProfile) {
-            setUserName(userProfile.username || '');
-        }
-    }, [userProfile]);
-
     const handleSave = async () => {
         if (!user) {
             setMessage('ログインが必要です');
@@ -51,6 +44,13 @@ export default function ProfileSettingsPage() {
             setLoading(false);
         }
     };
+
+    // ユーザープロフィールが読み込まれたら初期値を設定
+    useEffect(() => {
+        if (userProfile) {
+            setUserName(userProfile.username || '');
+        }
+    }, [userProfile]);
 
     if (userLoading) {
         return (

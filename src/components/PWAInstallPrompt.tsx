@@ -2,17 +2,37 @@
 
 import { useState, useEffect } from 'react';
 
-interface BeforeInstallPromptEvent extends Event {
+interface IBeforeInstallPromptEvent extends Event {
     prompt(): Promise<void>;
     userChoice: Promise<{ outcome: 'accepted' | 'dismissed'; platform: string }>;
 }
 
 export default function PWAInstallPrompt() {
-    const [deferredPrompt, setDeferredPrompt] = useState<BeforeInstallPromptEvent | null>(null);
+    const [deferredPrompt, setDeferredPrompt] = useState<IBeforeInstallPromptEvent | null>(null);
     const [isInstallable, setIsInstallable] = useState(false);
     const [isInstalled, setIsInstalled] = useState(false);
-
+    
     let ios, webkit, safari;
+    
+    const handleInstallClick = async () => {
+        if (!deferredPrompt) return;
+    
+        try {
+            deferredPrompt.prompt();
+            const { outcome } = await deferredPrompt.userChoice;
+    
+            if (outcome === 'accepted') {
+                console.log('PWAのインストールが受け入れられました');
+            } else {
+                console.log('PWAのインストールが却下されました');
+            }
+    
+            setDeferredPrompt(null);
+            setIsInstallable(false);
+        } catch (error) {
+            console.error('PWAインストールエラー:', error);
+        }
+    };
 
     useEffect(() => {
         // PWAがすでにインストールされているかチェック
@@ -29,7 +49,7 @@ export default function PWAInstallPrompt() {
 
         const handleBeforeInstallPrompt = (e: Event) => {
             e.preventDefault();
-            setDeferredPrompt(e as BeforeInstallPromptEvent);
+            setDeferredPrompt(e as IBeforeInstallPromptEvent);
             setIsInstallable(true);
         };
 
@@ -54,26 +74,6 @@ export default function PWAInstallPrompt() {
             window.removeEventListener('appinstalled', handleAppInstalled);
         };
     }, []);
-
-    const handleInstallClick = async () => {
-        if (!deferredPrompt) return;
-
-        try {
-            deferredPrompt.prompt();
-            const { outcome } = await deferredPrompt.userChoice;
-
-            if (outcome === 'accepted') {
-                console.log('PWAのインストールが受け入れられました');
-            } else {
-                console.log('PWAのインストールが却下されました');
-            }
-
-            setDeferredPrompt(null);
-            setIsInstallable(false);
-        } catch (error) {
-            console.error('PWAインストールエラー:', error);
-        }
-    };
 
     if (isInstalled) {
         return null; // すでにインストール済みの場合は何も表示しない

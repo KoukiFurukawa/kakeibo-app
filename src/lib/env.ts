@@ -2,13 +2,13 @@
  * 環境変数の検証とタイプセーフティ
  */
 
-interface RequiredEnvVars {
+interface IRequiredEnvVars {
   // 公開される環境変数（ブラウザでアクセス可能）
   NEXT_PUBLIC_SUPABASE_URL: string
   NEXT_PUBLIC_SUPABASE_ANON_KEY: string
 }
 
-interface OptionalEnvVars {
+interface IOptionalEnvVars {
   // サーバーサイドのみの環境変数（秘匿情報）
   SUPABASE_SERVICE_ROLE_KEY?: string
   SUPABASE_DB_PASSWORD?: string
@@ -18,12 +18,12 @@ interface OptionalEnvVars {
   NODE_ENV?: string
 }
 
-type EnvVars = RequiredEnvVars & OptionalEnvVars
+type EnvVars = IRequiredEnvVars & IOptionalEnvVars
 
 /**
  * 必須の環境変数をチェック
  */
-export function validateEnvVars(): RequiredEnvVars {
+export function validateEnvVars(): IRequiredEnvVars {
   const env = process.env as Partial<EnvVars>
   
   const missing: string[] = []

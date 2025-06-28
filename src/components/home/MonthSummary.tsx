@@ -1,14 +1,14 @@
-import { MonthlyStats } from "@/types/transaction";
+import { IMonthlyStats } from "@/types/transaction";
 
-interface MonthSummaryProps {
+interface IMonthSummaryProps {
     year: number;
     month: number;
-    stats: MonthlyStats;
+    stats: IMonthlyStats;
     transactionCount: number;
     salaryDay?: number;
 }
 
-const MonthSummary: React.FC<MonthSummaryProps> = ({ year, month, stats, transactionCount, salaryDay = 1 }) => {
+const MonthSummary: React.FC<IMonthSummaryProps> = ({ year, month, stats, transactionCount, salaryDay = 1 }) => {
     // 給料日ベースの期間を計算
     const formatPeriod = () => {
         if (salaryDay === 1) {

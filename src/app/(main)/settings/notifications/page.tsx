@@ -14,12 +14,27 @@ export default function NotificationsPage() {
         system: false
     });
     const [hasChanges, setHasChanges] = useState(false);
-
-    useEffect(() => {
-        if (notificationSettings) {
-            setLocalSettings(notificationSettings);
-        }
-    }, [notificationSettings]);
+    
+    const notificationItems = [
+        {
+            key: 'todo' as const,
+            title: 'ToDo通知',
+            description: '期限が近いToDoを通知',
+            enabled: localSettings?.todo
+        },
+        {
+            key: 'event' as const,
+            title: 'カレンダー通知',
+            description: '本日のカレンダー情報を通知',
+            enabled: localSettings?.event
+        },
+        {
+            key: 'system' as const,
+            title: 'システム通知',
+            description: 'アプリの重要なお知らせや更新情報',
+            enabled: localSettings?.system
+        },
+    ];
 
     const handleToggle = (key: 'todo' | 'event' | 'system') => {
         const newSettings = {
@@ -50,26 +65,11 @@ export default function NotificationsPage() {
         }
     };
 
-    const notificationItems = [
-        {
-            key: 'todo' as const,
-            title: 'ToDo通知',
-            description: '期限が近いToDoを通知',
-            enabled: localSettings?.todo
-        },
-        {
-            key: 'event' as const,
-            title: 'カレンダー通知',
-            description: '本日のカレンダー情報を通知',
-            enabled: localSettings?.event
-        },
-        {
-            key: 'system' as const,
-            title: 'システム通知',
-            description: 'アプリの重要なお知らせや更新情報',
-            enabled: localSettings?.system
-        },
-    ];
+    useEffect(() => {
+        if (notificationSettings) {
+            setLocalSettings(notificationSettings);
+        }
+    }, [notificationSettings]);
 
     return (
         <div className="space-y-6">

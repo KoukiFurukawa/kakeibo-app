@@ -4,7 +4,7 @@ import { useState, useEffect } from 'react';
 import { useUser } from '@/contexts/UserContext';
 import { useOnlineStatus } from '@/hooks/useOnlineStatus';
 
-interface PendingOperation {
+interface IPendingOperation {
   id: string;
   type: 'add' | 'update' | 'delete';
   table: 'transactions' | 'fixed_costs';
@@ -17,41 +17,12 @@ const STORAGE_KEY = 'kakeibo_pending_operations';
 export function useOfflineSync() {
   const { user, refreshAll } = useUser();
   const isOnline = useOnlineStatus();
-  const [pendingOperations, setPendingOperations] = useState<PendingOperation[]>([]);
+  const [pendingOperations, setPendingOperations] = useState<IPendingOperation[]>([]);
   const [isSyncing, setIsSyncing] = useState(false);
 
-  // ローカルストレージから保留中の操作を読み込み
-  useEffect(() => {
-    if (typeof window !== 'undefined') {
-      const saved = localStorage.getItem(STORAGE_KEY);
-      if (saved) {
-        try {
-          setPendingOperations(JSON.parse(saved));
-        } catch (error) {
-          console.error('保留中の操作の読み込みエラー:', error);
-          localStorage.removeItem(STORAGE_KEY);
-        }
-      }
-    }
-  }, []);
-
-  // 保留中の操作をローカルストレージに保存
-  useEffect(() => {
-    if (typeof window !== 'undefined') {
-      localStorage.setItem(STORAGE_KEY, JSON.stringify(pendingOperations));
-    }
-  }, [pendingOperations]);
-
-  // オンラインになった時に同期を実行
-  useEffect(() => {
-    if (isOnline && pendingOperations.length > 0 && user && !isSyncing) {
-      syncPendingOperations();
-    }
-  }, [isOnline, pendingOperations.length, user, isSyncing]);
-
   // 保留中の操作を追加
-  const addPendingOperation = (operation: Omit<PendingOperation, 'id' | 'timestamp'>) => {
-    const newOperation: PendingOperation = {
+  const addPendingOperation = (operation: Omit<IPendingOperation, 'id' | 'timestamp'>) => {
+    const newOperation: IPendingOperation = {
       ...operation,
       id: Date.now().toString() + Math.random().toString(36).substr(2, 9),
       timestamp: Date.now()
@@ -66,7 +37,7 @@ export function useOfflineSync() {
     if (!user || pendingOperations.length === 0) return;
 
     setIsSyncing(true);
-    const failedOperations: PendingOperation[] = [];
+    const failedOperations: IPendingOperation[] = [];
 
     for (const operation of pendingOperations) {
       try {
@@ -97,6 +68,35 @@ export function useOfflineSync() {
   const clearPendingOperations = () => {
     setPendingOperations([]);
   };
+
+  // ローカルストレージから保留中の操作を読み込み
+  useEffect(() => {
+    if (typeof window !== 'undefined') {
+      const saved = localStorage.getItem(STORAGE_KEY);
+      if (saved) {
+        try {
+          setPendingOperations(JSON.parse(saved));
+        } catch (error) {
+          console.error('保留中の操作の読み込みエラー:', error);
+          localStorage.removeItem(STORAGE_KEY);
+        }
+      }
+    }
+  }, []);
+
+  // 保留中の操作をローカルストレージに保存
+  useEffect(() => {
+    if (typeof window !== 'undefined') {
+      localStorage.setItem(STORAGE_KEY, JSON.stringify(pendingOperations));
+    }
+  }, [pendingOperations]);
+
+  // オンラインになった時に同期を実行
+  useEffect(() => {
+    if (isOnline && pendingOperations.length > 0 && user && !isSyncing) {
+      syncPendingOperations();
+    }
+  }, [isOnline, pendingOperations.length, user, isSyncing]);
 
   return {
     pendingOperations,

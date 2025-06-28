@@ -18,32 +18,6 @@ export default function BudgetSettingsPage() {
     const [message, setMessage] = useState('');
     const [hasChanges, setHasChanges] = useState(false);
 
-    // UserFinanceが読み込まれたら初期値を設定
-    useEffect(() => {
-        if (userFinance) {
-            setSavingGoal(userFinance.savings_goal?.toString() || '');
-            setFood(userFinance.food?.toString() || '');
-            setEntertainment(userFinance.entertainment?.toString() || '');
-            setClothing(userFinance.clothing?.toString() || '');
-            setDailyGoods(userFinance.daily_goods?.toString() || '');
-            setOther(userFinance.other?.toString() || '');
-        }
-    }, [userFinance]);
-
-    // 変更を検知
-    useEffect(() => {
-        if (userFinance) {
-            const hasChanges = 
-                savingGoal !== (userFinance.savings_goal?.toString() || '') ||
-                food !== (userFinance.food?.toString() || '') ||
-                entertainment !== (userFinance.entertainment?.toString() || '') ||
-                clothing !== (userFinance.clothing?.toString() || '') ||
-                dailyGoods !== (userFinance.daily_goods?.toString() || '') ||
-                other !== (userFinance.other?.toString() || '');
-            setHasChanges(hasChanges);
-        }
-    }, [savingGoal, food, entertainment, clothing, dailyGoods, other, userFinance]);
-
     const handleSave = async () => {
         setLoading(true);
         setMessage('');
@@ -81,6 +55,32 @@ export default function BudgetSettingsPage() {
             setLoading(false);
         }
     };
+
+    // UserFinanceが読み込まれたら初期値を設定
+    useEffect(() => {
+        if (userFinance) {
+            setSavingGoal(userFinance.savings_goal?.toString() || '');
+            setFood(userFinance.food?.toString() || '');
+            setEntertainment(userFinance.entertainment?.toString() || '');
+            setClothing(userFinance.clothing?.toString() || '');
+            setDailyGoods(userFinance.daily_goods?.toString() || '');
+            setOther(userFinance.other?.toString() || '');
+        }
+    }, [userFinance]);
+
+    // 変更を検知
+    useEffect(() => {
+        if (userFinance) {
+            const hasChanges = 
+                savingGoal !== (userFinance.savings_goal?.toString() || '') ||
+                food !== (userFinance.food?.toString() || '') ||
+                entertainment !== (userFinance.entertainment?.toString() || '') ||
+                clothing !== (userFinance.clothing?.toString() || '') ||
+                dailyGoods !== (userFinance.daily_goods?.toString() || '') ||
+                other !== (userFinance.other?.toString() || '');
+            setHasChanges(hasChanges);
+        }
+    }, [savingGoal, food, entertainment, clothing, dailyGoods, other, userFinance]);
 
     if (userLoading) {
         return (

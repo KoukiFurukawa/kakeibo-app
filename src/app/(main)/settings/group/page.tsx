@@ -13,16 +13,6 @@ export default function GroupSettingsPage() {
     const [showCreateSuccess, setShowCreateSuccess] = useState(false);
     const [leavingGroup, setLeavingGroup] = useState(false);
     const [error, setError] = useState('');
-    
-    // クエリパラメータからの成功メッセージ表示
-    useEffect(() => {
-        if (searchParams?.get('created') === 'true') {
-            setShowCreateSuccess(true);
-            setTimeout(() => {
-                setShowCreateSuccess(false);
-            }, 5000);
-        }
-    }, [searchParams]);
 
     // グループに参加している場合のアクション
     const memberActions = [
@@ -98,6 +88,16 @@ export default function GroupSettingsPage() {
             }
         }
     };
+
+    // クエリパラメータからの成功メッセージ表示
+    useEffect(() => {
+        if (searchParams?.get('created') === 'true') {
+            setShowCreateSuccess(true);
+            setTimeout(() => {
+                setShowCreateSuccess(false);
+            }, 5000);
+        }
+    }, [searchParams]);
 
     // ローディング中の表示
     if (loading) {

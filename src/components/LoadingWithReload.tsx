@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from 'react';
 
-interface LoadingWithReloadProps {
+interface ILoadingWithReloadProps {
     message?: string;
     showReloadAfter?: number; // ミリ秒
     onReload?: () => void;
@@ -12,7 +12,7 @@ export default function LoadingWithReload({
     message = '読み込み中...', 
     showReloadAfter = 3000,
     onReload 
-}: LoadingWithReloadProps) {
+}: ILoadingWithReloadProps) {
     const [showReload, setShowReload] = useState(false);
 
     useEffect(() => {

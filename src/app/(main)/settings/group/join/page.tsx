@@ -16,25 +16,6 @@ export default function JoinGroupPage() {
     const [error, setError] = useState('');
     const [success, setSuccess] = useState(false);
 
-    // URLからコードを取得
-    useEffect(() => {
-        if (searchParams) {
-            const code = searchParams.get('code');
-            if (code) {
-                setInviteCode(code);
-            }
-        }
-    }, [searchParams]);
-
-    // 既にグループに参加している場合はリダイレクト
-    useEffect(() => {
-        if (!loading && userGroup) {
-            setTimeout(() => {
-                router.push('/settings/group');
-            }, 2000);
-        }
-    }, [loading, userGroup, router]);
-
     const handleJoinGroup = async (e: React.FormEvent) => {
         e.preventDefault();
         setIsJoining(true);
@@ -68,6 +49,25 @@ export default function JoinGroupPage() {
             setIsJoining(false);
         }
     };
+
+    // URLからコードを取得
+    useEffect(() => {
+        if (searchParams) {
+            const code = searchParams.get('code');
+            if (code) {
+                setInviteCode(code);
+            }
+        }
+    }, [searchParams]);
+
+    // 既にグループに参加している場合はリダイレクト
+    useEffect(() => {
+        if (!loading && userGroup) {
+            setTimeout(() => {
+                router.push('/settings/group');
+            }, 2000);
+        }
+    }, [loading, userGroup, router]);
 
     // ローディング中
     if (loading) {

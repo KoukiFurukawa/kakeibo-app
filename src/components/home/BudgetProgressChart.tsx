@@ -1,11 +1,11 @@
-interface BudgetProgressChartProps {
+interface IBudgetProgressChartProps {
     used: number;
     budget: number;
     label: string;
     isSavings?: boolean;
 }
 
-const BudgetProgressChart: React.FC<BudgetProgressChartProps> = ({
+const BudgetProgressChart: React.FC<IBudgetProgressChartProps> = ({
     used,
     budget,
     label,

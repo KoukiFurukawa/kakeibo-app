@@ -1,10 +1,10 @@
-import { PieChartData } from "@/types/transaction";
+import { IPieChartData } from "@/types/transaction";
 
-interface PieChartProps {
-    data: PieChartData[];
+interface IPieChartProps {
+    data: IPieChartData[];
 }
 
-const PieChart: React.FC<PieChartProps> = ({ data }) => {
+const PieChart: React.FC<IPieChartProps> = ({ data }) => {
     const total = data.reduce((sum, item) => sum + item.value, 0);
 
     if (total === 0) {
