@@ -1,5 +1,5 @@
-import { TransactionInput } from "@/types/transaction";
-import { useState } from "react";
+import { TransactionInput, Transaction } from "@/types/transaction";
+import { useState, useEffect } from "react";
 import { supabase } from "@/utils/manage_supabase"; // Import supabase client
 
 interface TransactionModalProps {
@@ -7,9 +7,16 @@ interface TransactionModalProps {
     onClose: () => void;
     onSubmit: (data: TransactionInput) => Promise<void>;
     saving: boolean;
+    editTransaction?: Transaction | null;
 }
 
-const TransactionModal: React.FC<TransactionModalProps> = ({ isOpen, onClose, onSubmit, saving }) => {
+const TransactionModal: React.FC<TransactionModalProps> = ({ 
+    isOpen, 
+    onClose, 
+    onSubmit, 
+    saving, 
+    editTransaction 
+}) => {
     const [inputType, setInputType] = useState<'income' | 'expense'>('expense');
     const [inputTitle, setInputTitle] = useState('');
     const [inputDescription, setInputDescription] = useState('');
@@ -20,6 +27,20 @@ const TransactionModal: React.FC<TransactionModalProps> = ({ isOpen, onClose, on
     const tags = [
         '食費', '日用品', '交通費', '娯楽', '衣服', '医療', '住居', '水道光熱費', '通信費', '教育', '給料', 'その他'
     ];
+    
+    // 編集モードの場合、データをフォームに設定
+    useEffect(() => {
+        if (editTransaction) {
+            setInputType(editTransaction.is_income ? 'income' : 'expense');
+            setInputTitle(editTransaction.title || '');
+            setInputDescription(editTransaction.description || '');
+            setInputAmount(editTransaction.amount.toString());
+            setInputTag(editTransaction.tag || '');
+            setInputDate(editTransaction.date || new Date().toISOString().split('T')[0]);
+        } else {
+            resetForm();
+        }
+    }, [editTransaction]);
 
     const refreshSession = async () => {
         try {
@@ -149,7 +170,7 @@ const TransactionModal: React.FC<TransactionModalProps> = ({ isOpen, onClose, on
             <div className="bg-white w-full max-w-md rounded-lg shadow-xl max-h-[90vh] overflow-y-auto">
                 <div className="p-4 border-b border-gray-200">
                     <div className="flex items-center justify-between">
-                        <h2 className="text-lg font-semibold">収支を追加</h2>
+                        <h2 className="text-lg font-semibold">{editTransaction ? '収支を編集' : '収支を追加'}</h2>
                         <button
                             onClick={handleCancel}
                             className="p-2 hover:bg-gray-100 rounded-md"
@@ -268,7 +289,7 @@ const TransactionModal: React.FC<TransactionModalProps> = ({ isOpen, onClose, on
                                     : 'bg-blue-600 text-white hover:bg-blue-700'
                                 }`}
                         >
-                            {saving ? '保存中...' : '保存'}
+                            {saving ? '保存中...' : (editTransaction ? '更新' : '保存')}
                         </button>
                     </div>
                 </form>
