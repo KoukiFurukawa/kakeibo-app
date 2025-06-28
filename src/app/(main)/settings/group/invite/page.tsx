@@ -16,13 +16,6 @@ export default function InviteGroupPage() {
     const [copied, setCopied] = useState(false);
     const [joinCode, setJoinCode] = useState('');
 
-    // ユーザーがグループに所属しているか確認
-    useEffect(() => {
-        if (!loading && !userGroup) {
-            router.push('/settings/group');
-        }
-    }, [loading, userGroup, router]);
-
     // 管理者権限の確認
     const isAdmin = userGroup?.author_user_id === user?.id;
 
@@ -63,6 +56,13 @@ export default function InviteGroupPage() {
             console.error('コピーに失敗しました:', err);
         });
     };
+
+     // ユーザーがグループに所属しているか確認
+    useEffect(() => {
+        if (!loading && !userGroup) {
+            router.push('/settings/group');
+        }
+    }, [loading, userGroup, router]);
 
     // ローディング中
     if (loading) {

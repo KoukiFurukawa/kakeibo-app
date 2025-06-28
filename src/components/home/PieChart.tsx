@@ -1,7 +1,7 @@
-import { PieChartData } from "@/types/transaction";
+import { IPieChartData } from "@/types/transaction";
 
 interface IPieChartProps {
-    data: PieChartData[];
+    data: IPieChartData[];
 }
 
 const PieChart: React.FC<IPieChartProps> = ({ data }) => {

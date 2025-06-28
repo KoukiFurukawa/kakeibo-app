@@ -1,9 +1,9 @@
 import { useState } from 'react';
-import { UserProfile, GroupMember } from '@/types/user';
+import { IUserProfile, IGroupMember } from '@/types/user';
 
 interface IUserSwitcherProps {
-    currentUser: UserProfile | null;
-    groupMembers: GroupMember[];
+    currentUser: IUserProfile | null;
+    groupMembers: IGroupMember[];
     onSwitchUser: (userId: string) => void;
 }
 

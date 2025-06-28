@@ -1,9 +1,9 @@
 import { supabase } from '@/utils/manage_supabase';
-import { UserFinance, FixedCost, UserTransaction } from '@/types/user';
+import { IUserFinance, IFixedCost, IUserTransaction } from '@/types/user';
 import { retryWithBackoff } from '@/utils/retryWithBackoff';
 
 export class FinanceService {
-    static async fetchUserFinance(userId: string): Promise<UserFinance | null> {
+    static async fetchUserFinance(userId: string): Promise<IUserFinance | null> {
         return retryWithBackoff(async () => {
             const { data, error } = await supabase
                 .from('finance')
@@ -16,7 +16,7 @@ export class FinanceService {
         });
     }
 
-    static async updateUserFinance(userId: string, updates: Partial<UserFinance>): Promise<UserFinance | null> {
+    static async updateUserFinance(userId: string, updates: Partial<IUserFinance>): Promise<IUserFinance | null> {
         return retryWithBackoff(async () => {
             const { data, error } = await supabase
                 .from('finance')
@@ -30,7 +30,7 @@ export class FinanceService {
         });
     }
 
-    static async fetchFixedCosts(userId: string): Promise<FixedCost[]> {
+    static async fetchFixedCosts(userId: string): Promise<IFixedCost[]> {
         const result = await retryWithBackoff(async () => {
             const { data, error } = await supabase
                 .from('fixed_costs')
@@ -45,7 +45,7 @@ export class FinanceService {
         return result || [];
     }
 
-    static async addFixedCost(userId: string, fixedCostData: Omit<FixedCost, 'id' | 'created_by' | 'created_at'>): Promise<FixedCost | null> {
+    static async addFixedCost(userId: string, fixedCostData: Omit<IFixedCost, 'id' | 'created_by' | 'created_at'>): Promise<IFixedCost | null> {
         return retryWithBackoff(async () => {
             const { data, error } = await supabase
                 .from('fixed_costs')
@@ -61,7 +61,7 @@ export class FinanceService {
         });
     }
 
-    static async updateFixedCost(userId: string, id: string, fixedCostData: Partial<FixedCost>): Promise<boolean> {
+    static async updateFixedCost(userId: string, id: string, fixedCostData: Partial<IFixedCost>): Promise<boolean> {
         const result = await retryWithBackoff(async () => {
             const { error } = await supabase
                 .from('fixed_costs')
@@ -91,7 +91,7 @@ export class FinanceService {
         return result || false;
     }
 
-    static async fetchTransactions(userId: string, year?: number, month?: number, salary_day: number = 1): Promise<UserTransaction[]> {
+    static async fetchTransactions(userId: string, year?: number, month?: number, salary_day: number = 1): Promise<IUserTransaction[]> {
         const result = await retryWithBackoff(async () => {
             let query = supabase
                 .from('transactions')
@@ -126,7 +126,7 @@ export class FinanceService {
         return result || [];
     }
 
-    static async addTransaction(userId: string, transactionData: Omit<UserTransaction, 'id' | 'created_by' | 'created_at'>): Promise<UserTransaction | null> {
+    static async addTransaction(userId: string, transactionData: Omit<IUserTransaction, 'id' | 'created_by' | 'created_at'>): Promise<IUserTransaction | null> {
         return retryWithBackoff(async () => {
             const { data, error } = await supabase
                 .from('transactions')
@@ -142,7 +142,7 @@ export class FinanceService {
         });
     }
 
-    static async updateTransaction(userId: string, id: string, transactionData: Partial<UserTransaction>): Promise<boolean> {
+    static async updateTransaction(userId: string, id: string, transactionData: Partial<IUserTransaction>): Promise<boolean> {
         const result = await retryWithBackoff(async () => {
             const { error } = await supabase
                 .from('transactions')
@@ -172,7 +172,7 @@ export class FinanceService {
         return result || false;
     }
 
-    static getMonthlyStats(transactions: UserTransaction[], year: number, month: number, salaryDay: number = 1) {
+    static getMonthlyStats(transactions: IUserTransaction[], year: number, month: number, salaryDay: number = 1) {
         // 給料日ベースでの期間計算
         let startDate, endDate;
         

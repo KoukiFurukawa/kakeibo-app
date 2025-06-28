@@ -1,18 +1,18 @@
-import { Transaction } from "@/types/transaction";
+import { ITransaction } from "@/types/transaction";
 import { useState } from "react";
 import { FiEdit2 } from "react-icons/fi"; // React Icons から編集アイコンをインポート
 
 interface ITransactionListProps {
     year: number;
     month: number;
-    transactions: Transaction[];
+    transactions: ITransaction[];
     activeTab: 'expense' | 'income';
     selectedTag: string;
     availableTags: string[];
     loading: boolean;
     onTabChange: (tab: 'expense' | 'income') => void;
     onTagChange: (tag: string) => void;
-    onEditTransaction?: (transaction: Transaction) => void;
+    onEditTransaction?: (transaction: ITransaction) => void;
 }
 
 const TransactionList: React.FC<ITransactionListProps> = ({

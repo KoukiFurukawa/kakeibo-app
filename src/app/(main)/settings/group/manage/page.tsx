@@ -19,29 +19,6 @@ export default function ManageGroupPage() {
     const [isRemoving, setIsRemoving] = useState(false);
     const [adminMessage, setAdminMessage] = useState('');
 
-    // グループ情報の初期設定
-    useEffect(() => {
-        if (userGroup) {
-            setGroupName(userGroup.group_name || '');
-            setGroupDescription(userGroup.description || '');
-        }
-    }, [userGroup]);
-
-    // グループメンバーの取得
-    useEffect(() => {
-        if (userGroup && !loading) {
-            // メンバー情報を取得
-            GroupService.fetchGroupMembers(userGroup.id, userGroup.author_user_id);
-        }
-    }, [userGroup?.id, loading]);
-
-    // ユーザーがグループに所属していない場合はリダイレクト
-    useEffect(() => {
-        if (!loading && !userGroup) {
-            router.push('/settings/group');
-        }
-    }, [loading, userGroup, router]);
-
     // グループ情報の更新
     const handleUpdateGroup = async (e: React.FormEvent) => {
         e.preventDefault();
@@ -110,6 +87,29 @@ export default function ManageGroupPage() {
             setRemoveConfirm(null);
         }
     };
+
+    // グループ情報の初期設定
+    useEffect(() => {
+        if (userGroup) {
+            setGroupName(userGroup.group_name || '');
+            setGroupDescription(userGroup.description || '');
+        }
+    }, [userGroup]);
+
+    // グループメンバーの取得
+    useEffect(() => {
+        if (userGroup && !loading) {
+            // メンバー情報を取得
+            GroupService.fetchGroupMembers(userGroup.id, userGroup.author_user_id);
+        }
+    }, [userGroup?.id, loading]);
+
+    // ユーザーがグループに所属していない場合はリダイレクト
+    useEffect(() => {
+        if (!loading && !userGroup) {
+            router.push('/settings/group');
+        }
+    }, [loading, userGroup, router]);
 
     // ローディング中
     if (loading) {

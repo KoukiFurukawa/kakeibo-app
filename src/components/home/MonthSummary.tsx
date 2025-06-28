@@ -1,9 +1,9 @@
-import { MonthlyStats } from "@/types/transaction";
+import { IMonthlyStats } from "@/types/transaction";
 
 interface IMonthSummaryProps {
     year: number;
     month: number;
-    stats: MonthlyStats;
+    stats: IMonthlyStats;
     transactionCount: number;
     salaryDay?: number;
 }

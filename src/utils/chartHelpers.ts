@@ -1,6 +1,6 @@
-import { PieChartData, Transaction } from "@/types/transaction";
+import { IPieChartData, ITransaction } from "@/types/transaction";
 
-export function generateExpenseByTag(transactions: Transaction[]): PieChartData[] {
+export function generateExpenseByTag(transactions: ITransaction[]): IPieChartData[] {
     const expenseTransactions = transactions.filter(t => !t.is_income);
     const tagTotals: { [key: string]: number } = {};
 

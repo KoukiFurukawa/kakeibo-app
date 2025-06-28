@@ -1,13 +1,13 @@
-import { TransactionInput, Transaction } from "@/types/transaction";
+import { ITransactionInput, ITransaction } from "@/types/transaction";
 import { useState, useEffect } from "react";
 import { supabase } from "@/utils/manage_supabase"; // Import supabase client
 
 interface ITransactionModalProps {
     isOpen: boolean;
     onClose: () => void;
-    onSubmit: (data: TransactionInput) => Promise<void>;
+    onSubmit: (data: ITransactionInput) => Promise<void>;
     saving: boolean;
-    editTransaction?: Transaction | null;
+    editTransaction?: ITransaction | null;
 }
 
 const TransactionModal: React.FC<ITransactionModalProps> = ({ 

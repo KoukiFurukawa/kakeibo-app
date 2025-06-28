@@ -1,9 +1,9 @@
 import { supabase } from '@/utils/manage_supabase';
-import { UserProfile, UserNotificationSettings } from '@/types/user';
+import { IUserProfile, IUserNotificationSettings } from '@/types/user';
 import { retryWithBackoff } from '@/utils/retryWithBackoff';
 
 export class UserService {
-    static async fetchUserProfile(userId: string): Promise<UserProfile | null> {
+    static async fetchUserProfile(userId: string): Promise<IUserProfile | null> {
         return retryWithBackoff(async () => {
             const { data, error } = await supabase
                 .from('users')
@@ -16,7 +16,7 @@ export class UserService {
         });
     }
 
-    static async updateUserProfile(userId: string, updates: Partial<UserProfile>): Promise<UserProfile | null> {
+    static async updateUserProfile(userId: string, updates: Partial<IUserProfile>): Promise<IUserProfile | null> {
         return retryWithBackoff(async () => {
             const { data, error } = await supabase
                 .from('users')
@@ -33,7 +33,7 @@ export class UserService {
         });
     }
 
-    static async fetchNotificationSettings(userId: string): Promise<UserNotificationSettings | null> {
+    static async fetchNotificationSettings(userId: string): Promise<IUserNotificationSettings | null> {
         return retryWithBackoff(async () => {
             const { data, error } = await supabase
                 .from('notification_settings')
@@ -46,7 +46,7 @@ export class UserService {
         });
     }
 
-    static async updateNotificationSettings(userId: string, updates: Partial<UserNotificationSettings>): Promise<UserNotificationSettings | null> {
+    static async updateNotificationSettings(userId: string, updates: Partial<IUserNotificationSettings>): Promise<IUserNotificationSettings | null> {
         return retryWithBackoff(async () => {
             const { data, error } = await supabase
                 .from('notification_settings')
