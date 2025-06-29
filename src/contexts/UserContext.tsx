@@ -4,6 +4,7 @@ import React, { createContext, useContext, useState, useEffect, ReactNode, useCa
 import { User } from '@supabase/supabase-js';
 import { supabase } from '@/utils/manage_supabase';
 import { IUserProfile, IUserNotificationSettings, IUserFinance, IFixedCost, IUserTransaction, IUserGroup, IGroupMember } from '@/types/user';
+import { IDateStatus } from '@/types/transaction';
 import { UserService } from '@/services/userService';
 import { FinanceService } from '@/services/financeService';
 import { GroupService } from '@/services/groupService';
@@ -25,6 +26,7 @@ interface IUserContextType {
     refreshTransactions: (year: number, month: number, userId: string | undefined) => Promise<void>;
     refreshUserGroup: () => Promise<void>;
     refreshAll: () => Promise<void>;
+    convertFixedCostsToTransactions: (fixedCosts: IFixedCost[], dateStatus: IDateStatus, salary_day: number) => IUserTransaction[];
 }
 
 const UserContext = createContext<IUserContextType | undefined>(undefined);
@@ -103,6 +105,15 @@ export function UserProvider({ children }: { children: ReactNode }) {
     const refreshTransactions = async (year: number, month: number, userId: string | undefined = user?.id) => {
         if (!user || !userProfile || !userId) return;
         const transactions = await FinanceService.fetchTransactions(userId, year, month, userProfile.salary_day);
+        if (fixedCosts.length > 0) {
+            // 固定費をトランザクションに変換して追加
+            const convertedFixedCosts = convertFixedCostsToTransactions(
+                fixedCosts, 
+                { year: year, month: month, isThisMonth: month === new Date().getMonth() + 1 && year === new Date().getFullYear() }, 
+                userProfile.salary_day ? userProfile.salary_day : 1
+            );
+            transactions.push(...convertedFixedCosts);
+        }
         setTransactions(transactions);
     };
 
@@ -173,6 +184,47 @@ export function UserProvider({ children }: { children: ReactNode }) {
         
         setSessionCheckInterval(interval);
     };
+
+    // 固定費をトランザクションに変換する関数
+    const convertFixedCostsToTransactions = useCallback((
+        fixedCosts: IFixedCost[],
+        dateStatus: IDateStatus,
+        salary_day: number
+    ): IUserTransaction[] => {
+        const today = new Date();
+        const todayDate: string = `${today.getFullYear()}-${today.getMonth() + 1}-${today.getDate()}`;
+        const startDate = `${dateStatus.year}-${salary_day !== 1 ? dateStatus.month : dateStatus.month}-${salary_day}`;
+
+        // 条件に基づいて固定費をフィルタリング
+        const applicableFixedCosts = fixedCosts.filter(cost => {
+            const costDay = `${dateStatus.year}-${salary_day <= cost.debit_date ? dateStatus.month : dateStatus.month + 1}-${cost.debit_date}`;
+            if (!dateStatus.isThisMonth) {
+                return true; // 今月の場合はすべての固定費を含める
+            } else {
+                // 給料日から今日までの間の固定費のみを含める
+                return startDate <= costDay && costDay <= todayDate;
+            }
+        });
+        
+        // 固定費をトランザクションに変換
+        return applicableFixedCosts.map(cost => {
+            // 固定費の日付を生成
+            const formattedDate = `${dateStatus.year}-${salary_day <= cost.debit_date ? dateStatus.month : dateStatus.month + 1}-${cost.debit_date}`;
+            const result: IUserTransaction = {
+                id: `fixed-${cost.id}`,
+                created_by: cost.created_by || user?.id || '',
+                amount: cost.cost,
+                title: cost.title || '固定費',
+                tag: cost.tag || '固定費',
+                description: cost.title || '固定費',
+                is_income: false, // 固定費は支出として扱う
+                date: formattedDate, // Date オブジェクトではなく直接文字列で指定
+                created_at: new Date().toISOString(),
+            };
+            
+            return result
+        });
+    }, []);
     
     // 認証状態の監視とユーザープロフィールの取得
     useEffect(() => {
@@ -278,6 +330,14 @@ export function UserProvider({ children }: { children: ReactNode }) {
                     members = await GroupService.fetchGroupMembers(userGroup.id, user.id);
                 }
 
+                // 固定費を含める
+                const convertedFixedCosts = convertFixedCostsToTransactions(
+                    costs, 
+                    { year: year, month: month, isThisMonth: true }, 
+                    salaryDay
+                );
+                userTransactions.push(...convertedFixedCosts);
+
                 if (!isMounted) return;
 
                 // 一度にすべての状態を更新（再レンダリング回数を最小化）
@@ -329,6 +389,7 @@ export function UserProvider({ children }: { children: ReactNode }) {
         refreshTransactions,
         refreshUserGroup,
         refreshAll,
+        convertFixedCostsToTransactions,
     };
 
     return (
