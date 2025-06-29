@@ -239,6 +239,11 @@ export default function Home() {
     setTimeout(() => setMessage(''), 3000);
   };
 
+  // 現在のユーザーがログインユーザー自身かどうかを判定
+  const isOwnData = useMemo(() => {
+    return user && currentUser && user.id === currentUser.id;
+  }, [user, currentUser]);
+
   useEffect(() => {
     const getCurrentPeriod = () => {
         const now = new Date();
@@ -356,7 +361,7 @@ export default function Home() {
         loading={loading}
         onTabChange={handleTabChange}
         onTagChange={setSelectedTag}
-        onEditTransaction={handleEditTransaction}
+        onEditTransaction={isOwnData ? handleEditTransaction : undefined}
       />
 
       {/* ユーザー切り替えボタン */}
