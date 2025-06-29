@@ -40,3 +40,9 @@ export interface IUserFinance {
     daily_goods: number;
     other: number;
 }
+
+export interface  IDateStatus {
+    year: number;
+    month: number;
+    isThisMonth: boolean;
+}

@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from 'react';
 import { supabase } from '@/utils/manage_supabase';
-import { NotificationWithReadStatus } from '@/types/notification';
+import { INotificationWithReadStatus } from '@/types/notification';
 import { useUser } from '@/contexts/UserContext';
 
 interface INotificationState {
@@ -18,7 +18,7 @@ export function useNotifications() {
     supported: false,
     permission: 'default'
   });
-  const [notifications, setNotifications] = useState<NotificationWithReadStatus[]>([]);
+  const [notifications, setNotifications] = useState<INotificationWithReadStatus[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const { user } = useUser();
