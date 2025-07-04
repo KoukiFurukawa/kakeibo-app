@@ -1,4 +1,4 @@
-"use client"
+"use client";
 
 import { useUser } from "@/contexts/UserContext";
 import { useEffect, useState, useMemo } from "react";
@@ -35,13 +35,16 @@ export default function Home() {
   // 状態管理
   const [showInputModal, setShowInputModal] = useState(false);
   const [saving, setSaving] = useState(false);
-  const [message, setMessage] = useState('');
-  const [activeTab, setActiveTab] = useState<'expense' | 'income'>('expense');
-  const [selectedTag, setSelectedTag] = useState<string>('all');
-  const [selectedYear, setSelectedYear] = useState(new Date().getFullYear())
-  const [selectedMonth, setSelectedMonth] = useState(new Date().getMonth() + 1)
-  const [currentUser, setCurrentUser] = useState<IGroupMember | null>(groupMembers?.find(member => member.id === user?.id) || null);
-  const [editingTransaction, setEditingTransaction] = useState<ITransaction | null>(null);
+  const [message, setMessage] = useState("");
+  const [activeTab, setActiveTab] = useState<"expense" | "income">("expense");
+  const [selectedTag, setSelectedTag] = useState<string>("all");
+  const [selectedYear, setSelectedYear] = useState(new Date().getFullYear());
+  const [selectedMonth, setSelectedMonth] = useState(new Date().getMonth() + 1);
+  const [currentUser, setCurrentUser] = useState<IGroupMember | null>(
+    groupMembers?.find((member) => member.id === user?.id) || null,
+  );
+  const [editingTransaction, setEditingTransaction] =
+    useState<ITransaction | null>(null);
 
   // グループメンバーが2人以上（自分含む）かどうかを判定
   const hasMultipleMembers = useMemo(() => {
@@ -54,7 +57,7 @@ export default function Home() {
       // 給料日が1日の場合は通常の月表示
       return {
         startDate: new Date(year, month - 1, 1, 0, 0, 0),
-        endDate: new Date(year, month, 0, 23, 59, 59)
+        endDate: new Date(year, month, 0, 23, 59, 59),
       };
     }
 
@@ -62,64 +65,78 @@ export default function Home() {
     const prevMonth = month === 1 ? 12 : month - 1;
     const prevYear = month === 1 ? year - 1 : year;
     const startDate = new Date(prevYear, prevMonth - 1, day, 0, 0, 0);
-    
+
     // 終了日: 当月の給料日前日
     const endDate = new Date(year, month - 1, day - 1, 23, 59, 59);
-    
+
     // 給料日が月末より大きい場合の調整
     if (day > new Date(year, month, 0).getDate()) {
       endDate.setDate(new Date(year, month, 0).getDate());
     }
-    
+
     return { startDate, endDate };
   };
 
   // 月別統計データ
-  const monthlyStats = transactions.length > 0
-    ? FinanceService.getMonthlyStats(transactions, selectedYear, selectedMonth, salaryDay)
-    : { income: 0, expense: 0, balance: 0 };
+  const monthlyStats =
+    transactions.length > 0
+      ? FinanceService.getMonthlyStats(
+          transactions,
+          selectedYear,
+          selectedMonth,
+          salaryDay,
+        )
+      : { income: 0, expense: 0, balance: 0 };
 
   // 選択された月の取引データを取得
   const currentMonthTransactions = useMemo(() => {
-    const { startDate, endDate } = getPeriodDates(selectedYear, selectedMonth, salaryDay);
+    const { startDate, endDate } = getPeriodDates(
+      selectedYear,
+      selectedMonth,
+      salaryDay,
+    );
 
-    return transactions.filter(transaction => {
+    return transactions.filter((transaction) => {
       const dateToUse = transaction.date || transaction.created_at;
       const transactionDate = new Date(dateToUse);
-      
+
       // 日付の比較で、同じ日付（時間差あり）もカバーするための調整
       const transactionDateOnly = new Date(
         transactionDate.getFullYear(),
         transactionDate.getMonth(),
         transactionDate.getDate(),
-        0, 0, 0
+        0,
+        0,
+        0,
       );
       const startDateOnly = new Date(
         startDate.getFullYear(),
         startDate.getMonth(),
         startDate.getDate(),
-        0, 0, 0
+        0,
+        0,
+        0,
       );
-      
+
       // 開始日を含み、終了日を含む範囲で比較
       return transactionDateOnly >= startDateOnly && transactionDate <= endDate;
     });
   }, [transactions, selectedYear, selectedMonth, salaryDay]);
 
   // 支出タグごとの集計データ
-  const expenseByTag = useMemo(() =>
-    generateExpenseByTag(currentMonthTransactions),
-    [currentMonthTransactions]
+  const expenseByTag = useMemo(
+    () => generateExpenseByTag(currentMonthTransactions),
+    [currentMonthTransactions],
   );
 
   // タグフィルタリングされた取引
   const filteredTransactions = useMemo(() => {
-    let filtered = currentMonthTransactions.filter(t =>
-      activeTab === 'expense' ? !t.is_income : t.is_income
+    let filtered = currentMonthTransactions.filter((t) =>
+      activeTab === "expense" ? !t.is_income : t.is_income,
     );
 
-    if (selectedTag !== 'all') {
-      filtered = filtered.filter(t => t.tag === selectedTag);
+    if (selectedTag !== "all") {
+      filtered = filtered.filter((t) => t.tag === selectedTag);
     }
 
     return filtered.sort((a, b) => {
@@ -131,11 +148,13 @@ export default function Home() {
 
   // 使用可能なタグ一覧
   const availableTags = useMemo(() => {
-    const tagsInTransactions = Array.from(new Set(
-      currentMonthTransactions
-        .filter(t => activeTab === 'expense' ? !t.is_income : t.is_income)
-        .map(t => t.tag)
-    ));
+    const tagsInTransactions = Array.from(
+      new Set(
+        currentMonthTransactions
+          .filter((t) => (activeTab === "expense" ? !t.is_income : t.is_income))
+          .map((t) => t.tag),
+      ),
+    );
     return tagsInTransactions.sort();
   }, [currentMonthTransactions, activeTab]);
 
@@ -143,8 +162,7 @@ export default function Home() {
   const handleMonthChange = async (year: number, month: number) => {
     setSelectedYear(year);
     setSelectedMonth(month);
-    if (salaryDay !== 1)
-    {
+    if (salaryDay !== 1) {
       year = month === 1 ? year - 1 : year;
       month = month === 1 ? 12 : month - 1;
     }
@@ -154,11 +172,11 @@ export default function Home() {
   // 取引追加ハンドラ - 常にログインユーザーのIDを使用
   const handleTransactionSubmit = async (data: ITransactionInput) => {
     setSaving(true);
-    setMessage('');
+    setMessage("");
 
     try {
       if (!user) {
-        setMessage('ユーザー情報が取得できません。再ログインしてください。');
+        setMessage("ユーザー情報が取得できません。再ログインしてください。");
         return;
       }
 
@@ -167,41 +185,52 @@ export default function Home() {
       // 編集モードと追加モードを分岐
       if (editingTransaction) {
         // 編集モード
-        success = await FinanceService.updateTransaction(user.id, editingTransaction.id, data);
+        success = await FinanceService.updateTransaction(
+          user.id,
+          editingTransaction.id,
+          data,
+        );
         if (success) {
-          setMessage('収支を更新しました');
+          setMessage("収支を更新しました");
         } else {
-          setMessage('更新に失敗しました。もう一度お試しください。');
+          setMessage("更新に失敗しました。もう一度お試しください。");
         }
       } else {
         // 新規追加モード
-        const newTransaction = await FinanceService.addTransaction(user.id, data);
+        const newTransaction = await FinanceService.addTransaction(
+          user.id,
+          data,
+        );
         success = !!newTransaction;
         if (success) {
-          setMessage('収支を追加しました');
+          setMessage("収支を追加しました");
         } else {
-          setMessage('追加に失敗しました。もう一度お試しください。');
+          setMessage("追加に失敗しました。もう一度お試しください。");
         }
       }
 
       if (success) {
         setShowInputModal(false);
         setEditingTransaction(null);
-        
+
         let year = selectedYear;
         let month = selectedMonth;
         if (salaryDay !== 1) {
           year = month === 1 ? year - 1 : year;
           month = month === 1 ? 12 : month - 1;
         }
-        
+
         // 現在表示中のユーザーのトランザクションを再取得
         await refreshTransactions(year, month, currentUser?.id);
-        setTimeout(() => setMessage(''), 3000);
+        setTimeout(() => setMessage(""), 3000);
       }
     } catch (error) {
-      console.error('収支操作エラー:', error);
-      setMessage(editingTransaction ? '更新に失敗しました' : '追加に失敗しました。もう一度お試しください。');
+      console.error("収支操作エラー:", error);
+      setMessage(
+        editingTransaction
+          ? "更新に失敗しました"
+          : "追加に失敗しました。もう一度お試しください。",
+      );
     } finally {
       setSaving(false);
     }
@@ -220,23 +249,23 @@ export default function Home() {
   };
 
   // タブ変更ハンドラ
-  const handleTabChange = (tab: 'expense' | 'income') => {
+  const handleTabChange = (tab: "expense" | "income") => {
     setActiveTab(tab);
-    setSelectedTag('all');
+    setSelectedTag("all");
   };
 
   // ユーザー切り替えハンドラ
   const handleSwitchUser = async (userId: string) => {
-    setCurrentUser(groupMembers.find(member => member.id === userId) || null);
-    setMessage('ユーザーを切り替えました');
+    setCurrentUser(groupMembers.find((member) => member.id === userId) || null);
+    setMessage("ユーザーを切り替えました");
     let year = selectedYear;
-      let month = selectedMonth;
-      if (salaryDay !== 1) {
-        year = month === 1 ? year - 1 : year;
-        month = month === 1 ? 12 : month - 1;
-      }
+    let month = selectedMonth;
+    if (salaryDay !== 1) {
+      year = month === 1 ? year - 1 : year;
+      month = month === 1 ? 12 : month - 1;
+    }
     await refreshTransactions(year, month, userId);
-    setTimeout(() => setMessage(''), 3000);
+    setTimeout(() => setMessage(""), 3000);
   };
 
   // 現在のユーザーがログインユーザー自身かどうかを判定
@@ -246,34 +275,36 @@ export default function Home() {
 
   useEffect(() => {
     const getCurrentPeriod = () => {
-        const now = new Date();
-        let year = now.getFullYear();
-        let month = now.getMonth() + 1; // JavaScriptの月は0から始まるので+1
-        
-        if (salaryDay > 1) {
-            const currentDay = now.getDate();
-            
-            // 現在が給料日以降なら、次の月度に
-            if (currentDay >= salaryDay) {
-                month += 1;
-                if (month > 12) {
-                    month = 1;
-                    year += 1;
-                }
-            }
+      const now = new Date();
+      let year = now.getFullYear();
+      let month = now.getMonth() + 1; // JavaScriptの月は0から始まるので+1
+
+      if (salaryDay > 1) {
+        const currentDay = now.getDate();
+
+        // 現在が給料日以降なら、次の月度に
+        if (currentDay >= salaryDay) {
+          month += 1;
+          if (month > 12) {
+            month = 1;
+            year += 1;
+          }
         }
-        
-        return { year, month };
+      }
+
+      return { year, month };
     };
     const { year, month } = getCurrentPeriod();
     setSelectedYear(year);
     setSelectedMonth(month);
-  }, [userProfile?.salary_day]);
+  }, [salaryDay, user]);
 
   useEffect(() => {
     if (!user || !groupMembers) return;
-    setCurrentUser(groupMembers?.find(member => member.id === user?.id) || null);
-  }, [groupMembers])
+    setCurrentUser(
+      groupMembers?.find((member) => member.id === user?.id) || null,
+    );
+  }, [user, groupMembers]);
 
   // データ初期化監視
   useEffect(() => {
@@ -281,7 +312,7 @@ export default function Home() {
 
     if (loading) {
       timeoutId = setTimeout(() => {
-        console.warn('ローディングが長時間続いています。強制的に終了します。');
+        console.warn("ローディングが長時間続いています。強制的に終了します。");
         if (user) {
           refreshAll();
         }
@@ -293,7 +324,14 @@ export default function Home() {
         clearTimeout(timeoutId);
       }
     };
-  }, [loading, transactions.length, refreshAll, user, selectedYear, selectedMonth]);
+  }, [
+    loading,
+    transactions.length,
+    refreshAll,
+    user,
+    selectedYear,
+    selectedMonth,
+  ]);
 
   if (loading) {
     return (
@@ -310,10 +348,13 @@ export default function Home() {
     <div className="space-y-4 sm:space-y-6 pb-20">
       {/* メッセージ表示 */}
       {message && (
-        <div className={`p-3 rounded-md text-sm ${message.includes('失敗')
-            ? 'bg-red-50 text-red-700 border border-red-200'
-            : 'bg-green-50 text-green-700 border border-green-200'
-          }`}>
+        <div
+          className={`p-3 rounded-md text-sm ${
+            message.includes("失敗")
+              ? "bg-red-50 text-red-700 border border-red-200"
+              : "bg-green-50 text-green-700 border border-green-200"
+          }`}
+        >
           {message}
         </div>
       )}
@@ -338,7 +379,9 @@ export default function Home() {
 
         {/* 支出内訳 */}
         <div className="bg-white p-4 sm:p-6 rounded-lg shadow-md">
-          <h2 className="text-lg sm:text-xl font-semibold mb-3 sm:mb-4">支出の内訳</h2>
+          <h2 className="text-lg sm:text-xl font-semibold mb-3 sm:mb-4">
+            支出の内訳
+          </h2>
           <PieChart data={expenseByTag} />
         </div>
       </div>
@@ -365,7 +408,7 @@ export default function Home() {
       />
 
       {/* ユーザー切り替えボタン */}
-      {userGroup && hasMultipleMembers && currentUser &&(
+      {userGroup && hasMultipleMembers && currentUser && (
         <UserSwitcher
           groupMembers={groupMembers}
           currentUser={currentUser}
@@ -378,8 +421,18 @@ export default function Home() {
         onClick={() => setShowInputModal(true)}
         className="fixed bottom-20 right-4 sm:bottom-24 sm:right-6 w-14 h-14 bg-blue-600 text-white rounded-full shadow-lg hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 transition-colors z-20"
       >
-        <svg className="w-6 h-6 mx-auto" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 6v6m0 0v6m0-6h6m-6 0H6" />
+        <svg
+          className="w-6 h-6 mx-auto"
+          fill="none"
+          stroke="currentColor"
+          viewBox="0 0 24 24"
+        >
+          <path
+            strokeLinecap="round"
+            strokeLinejoin="round"
+            strokeWidth={2}
+            d="M12 6v6m0 0v6m0-6h6m-6 0H6"
+          />
         </svg>
       </button>
 

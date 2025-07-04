@@ -1,12 +1,14 @@
 // PWAアイコン生成スクリプト
 // このファイルは開発用です。実際のプロジェクトでは適切なアイコンファイルを配置してください。
 
-const fs = require('fs');
-const path = require('path');
+const fs = require("fs");
+const path = require("path");
 
 const sizes = [72, 96, 128, 144, 152, 180, 192, 384, 512];
 
-const generateSVGIcon = (size) => `<svg width="${size}" height="${size}" viewBox="0 0 ${size} ${size}" fill="none" xmlns="http://www.w3.org/2000/svg">
+const generateSVGIcon = (
+  size,
+) => `<svg width="${size}" height="${size}" viewBox="0 0 ${size} ${size}" fill="none" xmlns="http://www.w3.org/2000/svg">
   <!-- Background -->
   <rect width="${size}" height="${size}" fill="#3b82f6"/>
   
@@ -32,18 +34,20 @@ const generateSVGIcon = (size) => `<svg width="${size}" height="${size}" viewBox
 </svg>`;
 
 // アイコンディレクトリが存在しない場合は作成
-const iconsDir = path.join(__dirname, '..', 'public', 'icons');
+const iconsDir = path.join(__dirname, "..", "public", "icons");
 if (!fs.existsSync(iconsDir)) {
   fs.mkdirSync(iconsDir, { recursive: true });
 }
 
 // 各サイズのSVGファイルを生成
-sizes.forEach(size => {
+sizes.forEach((size) => {
   const svgContent = generateSVGIcon(size);
   const filename = `icon-${size}x${size}.svg`;
   fs.writeFileSync(path.join(iconsDir, filename), svgContent);
   console.log(`Generated ${filename}`);
 });
 
-console.log('PWAアイコンの生成が完了しました！');
-console.log('注意: これは開発用の簡易アイコンです。本番環境では適切にデザインされたアイコンを使用してください。');
+console.log("PWAアイコンの生成が完了しました！");
+console.log(
+  "注意: これは開発用の簡易アイコンです。本番環境では適切にデザインされたアイコンを使用してください。",
+);
