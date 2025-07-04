@@ -268,12 +268,12 @@ export default function Home() {
     const { year, month } = getCurrentPeriod();
     setSelectedYear(year);
     setSelectedMonth(month);
-  }, [userProfile?.salary_day]);
+  }, [salaryDay, user]);
 
   useEffect(() => {
     if (!user || !groupMembers) return;
     setCurrentUser(groupMembers?.find(member => member.id === user?.id) || null);
-  }, [groupMembers])
+  }, [user, groupMembers])
 
   // データ初期化監視
   useEffect(() => {

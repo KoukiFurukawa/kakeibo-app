@@ -1,10 +1,11 @@
 'use client';
 
-import { useEffect, useState } from 'react';
+import { useState } from 'react';
 import Link from 'next/link';
 import { useUser } from '@/contexts/UserContext';
 import LoadingWithReload from '@/components/LoadingWithReload';
 import { FinanceService } from '@/services/financeService';
+import { IFixedCost } from '@/types/user';
 
 export default function FixedCostsPage() {
     const { user, fixedCosts, loading, refreshAll, refreshFixedCosts } = useUser();
@@ -131,7 +132,7 @@ export default function FixedCostsPage() {
         }
     };
 
-    const handleEdit = (cost: any) => {
+    const handleEdit = (cost: IFixedCost) => {
         setEditingId(cost.id);
         setName(cost.title);
         setAmount(cost.cost.toString());

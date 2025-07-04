@@ -50,8 +50,10 @@ export default function ManageGroupPage() {
                 throw new Error('グループ更新に失敗しました');
             }
             await refreshUserGroup(); // グループ情報を更新
-        } catch (err: any) {
-            setError(err.message || 'エラーが発生しました');
+        } catch (err: unknown) {
+            if (err instanceof Error) {
+                setError(err.message || 'エラーが発生しました');
+            }
         } finally {
             setIsSaving(false);
         }
@@ -80,8 +82,10 @@ export default function ManageGroupPage() {
             }
             
             await refreshUserGroup(); // グループ情報を更新
-        } catch (err: any) {
-            setError(err.message || 'エラーが発生しました');
+        } catch (err: unknown) {
+            if (err instanceof Error) {
+                setError(err.message || 'エラーが発生しました');
+            }
         } finally {
             setIsRemoving(false);
             setRemoveConfirm(null);
@@ -102,7 +106,7 @@ export default function ManageGroupPage() {
             // メンバー情報を取得
             GroupService.fetchGroupMembers(userGroup.id, userGroup.author_user_id);
         }
-    }, [userGroup?.id, loading]);
+    }, [userGroup, loading]);
 
     // ユーザーがグループに所属していない場合はリダイレクト
     useEffect(() => {

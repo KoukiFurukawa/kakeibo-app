@@ -14,7 +14,6 @@ export default function InviteGroupPage() {
     const [isGenerating, setIsGenerating] = useState(false);
     const [error, setError] = useState('');
     const [copied, setCopied] = useState(false);
-    const [joinCode, setJoinCode] = useState('');
 
     // 管理者権限の確認
     const isAdmin = userGroup?.author_user_id === user?.id;
@@ -37,8 +36,10 @@ export default function InviteGroupPage() {
             } else {
                 throw new Error('招待コードの生成に失敗しました');
             }
-        } catch (err: any) {
-            setError(err.message || 'エラーが発生しました');
+        } catch (err: unknown) {
+            if (err instanceof Error) {
+                setError(err.message || '招待コードの生成に失敗しました');
+            }
         } finally {
             setIsGenerating(false);
         }

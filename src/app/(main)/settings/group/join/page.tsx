@@ -43,8 +43,10 @@ export default function JoinGroupPage() {
 
             await refreshUserGroup(); // ユーザーグループ情報を更新
             await refreshUserProfile(); // ユーザープロフィール情報を更新
-        } catch (err: any) {
-            setError(err.message || 'グループ参加に失敗しました');
+        } catch (err: unknown) {
+            if (err instanceof Error) {
+                setError(err.message || 'グループ参加に失敗しました');
+            }
         } finally {
             setIsJoining(false);
         }

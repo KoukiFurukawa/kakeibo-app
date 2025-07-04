@@ -56,7 +56,7 @@ export function UserProvider({ children }: { children: ReactNode }) {
 
             console.log('セッションが有効です:', session.user.id);
             
-            const tokenExpirationTime = new Date((session.access_token.split('.')[1] || '') as any).getTime();
+            const tokenExpirationTime = new Date((session.access_token.split('.')[1] || '') as string).getTime();
             const currentTime = Date.now();
             const timeToExpire = tokenExpirationTime - currentTime;
             
@@ -224,7 +224,7 @@ export function UserProvider({ children }: { children: ReactNode }) {
             
             return result
         });
-    }, []);
+    }, [user?.id]);
     
     // 認証状態の監視とユーザープロフィールの取得
     useEffect(() => {
@@ -319,9 +319,9 @@ export function UserProvider({ children }: { children: ReactNode }) {
                     GroupService.fetchUserGroup(user.id)
                 ]);
                 
-                let salaryDay = profile?.salary_day || 1; // デフォルトの給料日を25日に設定
-                let year = currentDate.getFullYear();
-                let month = currentDate.getMonth() + 1; // 月は0から始
+                const salaryDay = profile?.salary_day || 1; // デフォルトの給料日を25日に設定
+                const year = currentDate.getFullYear();
+                const month = currentDate.getMonth(); // 月は0から始
                 const userTransactions = await FinanceService.fetchTransactions(user.id, year, month, salaryDay);
                 
                 let members: IGroupMember[] = [];

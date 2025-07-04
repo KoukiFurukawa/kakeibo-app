@@ -8,7 +8,9 @@ export const retryWithBackoff = async <T,>(
     for (let attempt = 0; attempt <= maxRetries; attempt++) {
         try {
             return await fn();
-        } catch (error: any) {
+        }
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        catch (error: any) {
             if (attempt === maxRetries) {
                 console.error(`最大リトライ回数(${maxRetries})に達しました:`, error);
                 return null;

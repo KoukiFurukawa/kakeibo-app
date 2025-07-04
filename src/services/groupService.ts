@@ -1,6 +1,5 @@
 import { supabase } from '@/utils/manage_supabase';
 import { IUserGroup, IGroupMember } from '@/types/user';
-import { retryWithBackoff } from '@/utils/retryWithBackoff';
 
 export class GroupService {
     static async fetchUserGroup(userId: string): Promise<IUserGroup | null> {

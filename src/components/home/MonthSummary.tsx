@@ -20,9 +20,6 @@ const MonthSummary: React.FC<IMonthSummaryProps> = ({ year, month, stats, transa
         const startMonth = month === 1 ? 12 : month - 1;
         const startYear = month === 1 ? year - 1 : year;
         
-        // 終了日: 当月の給料日前日
-        const endDate = new Date(year, month - 1, salaryDay - 1);
-        
         return `${startYear}/${startMonth}/${salaryDay} ~ ${year}/${month}/${salaryDay - 1} の収支`;
     };
 

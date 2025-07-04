@@ -3,12 +3,14 @@
 import { useState, useEffect } from 'react';
 import { useUser } from '@/contexts/UserContext';
 import { useOnlineStatus } from '@/hooks/useOnlineStatus';
+import { ITransaction } from '@/types/transaction';
+import { IFixedCost } from '@/types/user';
 
 interface IPendingOperation {
   id: string;
   type: 'add' | 'update' | 'delete';
   table: 'transactions' | 'fixed_costs';
-  data: any;
+  data: ITransaction | IFixedCost;
   timestamp: number;
 }
 
@@ -96,7 +98,7 @@ export function useOfflineSync() {
     if (isOnline && pendingOperations.length > 0 && user && !isSyncing) {
       syncPendingOperations();
     }
-  }, [isOnline, pendingOperations.length, user, isSyncing]);
+  }, [isOnline, pendingOperations.length, user, isSyncing, syncPendingOperations]);
 
   return {
     pendingOperations,

@@ -108,12 +108,16 @@ export class FinanceService {
                     query = query
                         .gte('date', startDate)
                         .lte('date', endDate);
-                } catch (error) {
+                }
+                catch (error: unknown) {
                     const startDateTime = new Date(year, month - 1, salary_day).toISOString();
                     const endDateTime = new Date(year, month, salary_day - 1, 23, 59, 59).toISOString();
                     query = query
                         .gte('created_at', startDateTime)
                         .lte('created_at', endDateTime);
+                    if (error instanceof Error) {
+                        console.warn('日付フィールドの変換に失敗、created_atを使用:', error.message);
+                    }
                 }
             }
 

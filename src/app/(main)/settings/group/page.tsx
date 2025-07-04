@@ -81,8 +81,11 @@ export default function GroupSettingsPage() {
                 }
 
                 await refreshUserGroup(); // グループ情報を再取得
-            } catch (err: any) {
-                setError(err.message || 'エラーが発生しました');
+            }
+            catch (err: unknown) {
+                if (err instanceof Error) {
+                    setError(err.message || 'エラーが発生しました');
+                }
             } finally {
                 setLeavingGroup(false);
             }

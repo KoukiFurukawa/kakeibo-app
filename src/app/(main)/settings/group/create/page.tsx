@@ -76,8 +76,10 @@ export default function CreateGroupPage() {
             await refreshUserGroup(); // ユーザーグループ情報を更新
             // 成功したら設定ページに戻る
             router.push('/settings/group?created=true');
-        } catch (err: any) {
-            setError(err.message || 'グループの作成に失敗しました');
+        } catch (err: unknown) {
+            if (err instanceof Error) {
+                setError(err.message || 'グループの作成に失敗しました');
+            }
             setLoading(false);
         }
     };

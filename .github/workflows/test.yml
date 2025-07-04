@@ -1,0 +1,28 @@
+name: テスト
+
+on:
+  pull_request:
+    branches: [ main ]
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    
+    steps:
+      - uses: actions/checkout@v3
+      
+      - name: Node.js セットアップ
+        uses: actions/setup-node@v3
+        with:
+          node-version: '16'
+          cache: 'npm'
+          
+      - name: 依存パッケージのインストール
+        run: npm ci
+        
+      - name: テスト実行
+        run: npm test
+        
+      # カバレッジレポートを生成する場合
+      - name: カバレッジレポート
+        run: npm test -- --coverage

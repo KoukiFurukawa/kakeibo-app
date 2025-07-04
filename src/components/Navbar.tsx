@@ -14,7 +14,6 @@ const Navbar = () => {
         notifications, 
         unreadCount, 
         loading: notificationsLoading, 
-        fetchNotifications, 
         markAsRead,
         markAllAsRead 
     } = useNotifications();

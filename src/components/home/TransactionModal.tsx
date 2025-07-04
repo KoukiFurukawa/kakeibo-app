@@ -83,7 +83,10 @@ const TransactionModal: React.FC<ITransactionModalProps> = ({
                 // 成功した場合
                 resetForm();
                 return;
-            } catch (initialError) {
+            } catch (initialError: unknown) {
+                if (initialError instanceof Error) {
+                    console.warn('初回試行でタイムアウト:', initialError.message);
+                }
                 // 3秒以内に成功しなかった場合、セッションを更新して再試行
                 console.log('最初の試行がタイムアウトしました。セッションを更新して再試行します。');
                 
@@ -107,7 +110,9 @@ const TransactionModal: React.FC<ITransactionModalProps> = ({
                 // 再試行が成功した場合
                 resetForm();
             }
-        } catch (error: any) {
+        }
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        catch (error: any) {
             console.error('保存エラー:', error);
             
             // トークンエラーの場合はセッションを更新して再試行

@@ -42,7 +42,7 @@ export default function SalaryDaySettingsPage() {
         if (userProfile?.salary_day) {
             setSalaryDay(userProfile.salary_day);
         }
-    }, [user]);
+    }, [userProfile?.salary_day]);
 
     return (
         <div className="space-y-6">

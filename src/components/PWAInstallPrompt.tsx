@@ -42,7 +42,7 @@ export default function PWAInstallPrompt() {
         }
 
         // iOS Safariでのスタンドアロンモードチェック
-        if ((window.navigator as any).standalone === true) {
+        if ((window.navigator as Navigator & {standalone?: boolean}).standalone === true) {
             setIsInstalled(true);
             return;
         }
