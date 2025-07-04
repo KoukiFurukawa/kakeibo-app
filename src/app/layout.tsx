@@ -29,8 +29,16 @@ export const metadata: Metadata = {
   icons: {
     icon: "/icons/app-icon.svg",
     apple: [
-      { url: "/icons/icon-152x152.svg", sizes: "152x152", type: "image/svg+xml" },
-      { url: "/icons/apple-touch-icon.svg", sizes: "180x180", type: "image/svg+xml" },
+      {
+        url: "/icons/icon-152x152.svg",
+        sizes: "152x152",
+        type: "image/svg+xml",
+      },
+      {
+        url: "/icons/apple-touch-icon.svg",
+        sizes: "180x180",
+        type: "image/svg+xml",
+      },
     ],
   },
   appleWebApp: {
@@ -46,7 +54,7 @@ export const viewport = {
   maximumScale: 1,
   userScalable: false,
   themeColor: "#3b82f6",
-}
+};
 
 export default function RootLayout({
   children,
@@ -70,9 +78,7 @@ export default function RootLayout({
       <body
         className={`${geistSans.variable} ${geistMono.variable} antialiased`}
       >
-        <UserProvider>
-          {children}
-        </UserProvider>
+        <UserProvider>{children}</UserProvider>
       </body>
     </html>
   );

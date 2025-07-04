@@ -15,10 +15,13 @@ const eslintConfig = [
     rules: {
       "react-hooks/exhaustive-deps": "warn", // useEffectの依存配列に関する警告を有効化
       "react/no-unescaped-entities": "off", // JSX内のエスケープされていない文字の警告を無効化
-      "@typescript-eslint/no-unused-vars": ["warn", { argsIgnorePattern: "^_" }], // TypeScriptで未使用の変数に関する警告を有効化
+      "@typescript-eslint/no-unused-vars": [
+        "warn",
+        { argsIgnorePattern: "^_" },
+      ], // TypeScriptで未使用の変数に関する警告を有効化
       "@typescript-eslint/no-implicit-any-catch": "off",
-    }
-  }
+    },
+  },
 ];
 
 export default eslintConfig;
