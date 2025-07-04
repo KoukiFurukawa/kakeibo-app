@@ -1,11 +1,11 @@
-name: Build Check
+name: Type Check
 
 on:
   pull_request:
     branches: [main] # Adjust if your default branch has a different name
 
 jobs:
-  build:
+  type-check:
     runs-on: ubuntu-latest
 
     steps:
@@ -21,10 +21,10 @@ jobs:
       - name: Install dependencies
         run: npm ci # Using npm ci for more reliable builds in CI environments
 
-      - name: Build
-        run: npm run build
+      - name: TypeScript type check
+        run: npx tsc --noEmit
 
-      # Optionally notify on build completion
-      - name: Build status
+      # Optionally notify on type check completion
+      - name: Type check status
         if: always()
-        run: echo "Build ${{ job.status }}"
+        run: echo "Type check ${{ job.status }}"
