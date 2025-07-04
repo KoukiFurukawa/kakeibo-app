@@ -148,7 +148,7 @@ const Navbar = () => {
                       )
                         ? "bg-blue-500 text-white"
                         : "hover:bg-gray-100"
-                      }`}
+                    }`}
                   >
                     {item.name}
                   </Link>

@@ -27,14 +27,14 @@ export const retryWithBackoff = async <T>(
           );
           try {
             const { data } = await supabase.auth.refreshSession();
-  
+
             if (!data.session) {
               console.error(
                 "セッションを更新できませんでした。再ログインが必要です。",
               );
               return null;
             }
-  
+
             await new Promise((resolve) => setTimeout(resolve, 500));
           } catch (sessionError) {
             console.error("セッション更新エラー:", sessionError);

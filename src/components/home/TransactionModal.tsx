@@ -132,15 +132,14 @@ const TransactionModal: React.FC<ITransactionModalProps> = ({
       console.error("保存エラー:", error);
 
       // トークンエラーの場合はセッションを更新して再試行
-      if (error instanceof PostgrestError){
+      if (error instanceof PostgrestError) {
         if (
-          
           error?.message?.includes("JWT") ||
           error?.message?.includes("token") ||
           error?.message?.includes("認証")
         ) {
           alert("セッションの更新が必要です。再度お試しください。");
-  
+
           // エラー発生時にもセッション更新を試みる
           try {
             const refreshed = await refreshSession();
@@ -234,20 +233,22 @@ const TransactionModal: React.FC<ITransactionModalProps> = ({
               <button
                 type="button"
                 onClick={() => setInputType("income")}
-                className={`flex-1 px-4 py-2 rounded-md text-sm ${inputType === "income"
+                className={`flex-1 px-4 py-2 rounded-md text-sm ${
+                  inputType === "income"
                     ? "bg-green-500 text-white"
                     : "bg-gray-200"
-                  }`}
+                }`}
               >
                 収入
               </button>
               <button
                 type="button"
                 onClick={() => setInputType("expense")}
-                className={`flex-1 px-4 py-2 rounded-md text-sm ${inputType === "expense"
+                className={`flex-1 px-4 py-2 rounded-md text-sm ${
+                  inputType === "expense"
                     ? "bg-red-500 text-white"
                     : "bg-gray-200"
-                  }`}
+                }`}
               >
                 支出
               </button>
@@ -345,10 +346,11 @@ const TransactionModal: React.FC<ITransactionModalProps> = ({
             <button
               type="submit"
               disabled={saving}
-              className={`flex-1 py-3 px-4 rounded-md font-medium text-sm ${saving
+              className={`flex-1 py-3 px-4 rounded-md font-medium text-sm ${
+                saving
                   ? "bg-gray-400 text-gray-600 cursor-not-allowed"
                   : "bg-blue-600 text-white hover:bg-blue-700"
-                }`}
+              }`}
             >
               {saving ? "保存中..." : editTransaction ? "更新" : "保存"}
             </button>
