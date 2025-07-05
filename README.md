@@ -23,4 +23,4 @@
 * グループ機能については開発中です.
 
 ## 最終更新
-* 2025/06/20 - Koki Furukawa
+* 2025/06/20 - Koki Furukawa shinosuke matsushita
