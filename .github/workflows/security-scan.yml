@@ -1,0 +1,26 @@
+name: セキュリティスキャン
+
+on:
+  schedule:
+    - cron: '0 0 * * 0'  # 毎週日曜日に実行
+  pull_request:
+    branches: [ main ]
+
+jobs:
+  security:
+    runs-on: ubuntu-latest
+    
+    steps:
+      - uses: actions/checkout@v3
+      
+      - name: Node.js セットアップ
+        uses: actions/setup-node@v3
+        with:
+          node-version: '20'
+          cache: 'npm'
+          
+      - name: 依存パッケージのインストール
+        run: npm ci
+        
+      - name: セキュリティ脆弱性スキャン
+        run: npm audit

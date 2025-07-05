@@ -1,0 +1,24 @@
+name: リンターチェック
+
+on:
+  pull_request:
+    branches: [ main ]
+
+jobs:
+  lint:
+    runs-on: ubuntu-latest
+    
+    steps:
+      - uses: actions/checkout@v3
+      
+      - name: Node.js セットアップ
+        uses: actions/setup-node@v3
+        with:
+          node-version: '20'
+          cache: 'npm'
+          
+      - name: 依存パッケージのインストール
+        run: npm ci
+        
+      - name: ESLint実行
+        run: npm run lint

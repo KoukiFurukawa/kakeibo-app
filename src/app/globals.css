@@ -54,13 +54,15 @@ input[type="number"] {
   main {
     padding-bottom: calc(1rem + 64px); /* フッターの高さ + 余白 */
   }
-  
-  button, a {
+
+  button,
+  a {
     padding: 0.5rem 1rem;
     min-height: 2.5rem;
   }
-  
-  input, select {
+
+  input,
+  select {
     font-size: 16px; /* モバイルでフォーム入力時のズームを防ぐ */
   }
 }
