@@ -35,7 +35,9 @@ export default function WishlistPage() {
       <h1 className="text-xl sm:text-2xl font-bold mb-4">ほしいものリスト</h1>
       <div className="bg-white rounded-lg shadow p-4 sm:p-6">
         {items.length === 0 ? (
-          <p className="text-gray-500 text-center py-8">まだ登録されていません</p>
+          <p className="text-gray-500 text-center py-8">
+            まだ登録されていません
+          </p>
         ) : (
           <table className="w-full text-left">
             <thead>
@@ -80,7 +82,7 @@ export default function WishlistPage() {
               <input
                 type="text"
                 value={name}
-                onChange={e => setName(e.target.value)}
+                onChange={(e) => setName(e.target.value)}
                 className="w-full border border-gray-300 rounded p-2"
                 required
               />
@@ -90,7 +92,7 @@ export default function WishlistPage() {
               <input
                 type="number"
                 value={price}
-                onChange={e => setPrice(e.target.value)}
+                onChange={(e) => setPrice(e.target.value)}
                 className="w-full border border-gray-300 rounded p-2"
                 min={0}
                 required
