@@ -1,120 +1,140 @@
 "use client";
 
-import { useState } from "react";
-
-interface IWishlistItem {
-  id: string;
-  name: string;
-  price: number;
-}
+import { useState, useEffect } from "react";
+import WishItemModal from "@/components/wishlist/wishItemModal";
+import { IWishlistItem } from "@/types/wishlist";
+import { WishlistService } from "@/services/wishlistService";
+import { useUser } from "@/contexts/UserContext";
 
 export default function WishlistPage() {
   const [items, setItems] = useState<IWishlistItem[]>([]);
   const [showModal, setShowModal] = useState(false);
-  const [name, setName] = useState("");
-  const [price, setPrice] = useState("");
+  const { user } = useUser();
 
-  const handleAdd = (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!name || !price) return;
-    setItems([
-      ...items,
-      {
-        id: Date.now().toString(),
-        name,
-        price: Number(price),
-      },
-    ]);
-    setName("");
-    setPrice("");
+  useEffect(() => {
+    if (!user) return;
+    // 初期データ取得
+    WishlistService.fetchWishlist(user.id).then(setItems);
+  }, [user]);
+
+  // itemData: { name: string, price: number }
+  const handleAdd = async (itemData: { name: string; price: number }) => {
+    if (!user) return;
+    const newItem = await WishlistService.addWishlistItem(user?.id, itemData);
+    if (newItem) {
+      setItems([newItem, ...items]);
+    }
     setShowModal(false);
   };
 
+  // 名称を切り詰める関数
+  const truncateText = (text: string, maxLength: number = 16) => {
+    if (!text || text.length <= maxLength) return text;
+    return text.substring(0, maxLength) + "...";
+  };
+
   return (
-    <div className="relative min-h-screen p-4 sm:p-8 bg-gray-50">
-      <h1 className="text-xl sm:text-2xl font-bold mb-4">ほしいものリスト</h1>
-      <div className="bg-white rounded-lg shadow p-4 sm:p-6">
-        {items.length === 0 ? (
-          <p className="text-gray-500 text-center py-8">
-            まだ登録されていません
-          </p>
-        ) : (
-          <table className="w-full text-left">
+    <div className="relative p-4 sm:p-8 bg-gray-50">
+      <div className="bg-white p-4 sm:p-6 rounded-lg shadow-md">
+        {/* デスクトップ表示: テーブル */}
+        <div className="hidden md:block overflow-x-auto">
+          <table className="min-w-full divide-y divide-gray-200">
             <thead>
               <tr>
-                <th className="py-2 px-2 border-b">名称</th>
-                <th className="py-2 px-2 border-b">値段</th>
+                <th className="px-3 py-2 sm:px-6 sm:py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                  名称
+                </th>
+                <th className="px-3 py-2 sm:px-6 sm:py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                  値段
+                </th>
               </tr>
             </thead>
-            <tbody>
-              {items.map((item) => (
-                <tr key={item.id}>
-                  <td className="py-2 px-2 border-b">{item.name}</td>
-                  <td className="py-2 px-2 border-b">
-                    {item.price.toLocaleString()} 円
+            <tbody className="bg-white divide-y divide-gray-200">
+              {items.length === 0 ? (
+                <tr>
+                  <td
+                    className="px-3 py-4 sm:px-6 sm:py-4 whitespace-nowrap text-xs sm:text-sm text-gray-500 text-center"
+                    colSpan={2}
+                  >
+                    まだ登録されていません
                   </td>
                 </tr>
-              ))}
+              ) : (
+                items.map((item) => (
+                  <tr key={item.id}>
+                    <td className="px-3 py-2 sm:px-6 sm:py-4 text-xs sm:text-sm text-gray-900 max-w-xs font-medium">
+                      {truncateText(item.name, 16)}
+                    </td>
+                    <td className="px-3 py-2 sm:px-6 sm:py-4 whitespace-nowrap text-xs sm:text-sm">
+                      <span className="text-blue-600 font-medium">
+                        ¥{item.price.toLocaleString()}
+                      </span>
+                    </td>
+                  </tr>
+                ))
+              )}
             </tbody>
           </table>
+        </div>
+
+        {/* モバイル表示: カードUI */}
+        <div className="md:hidden">
+          {items.length === 0 ? (
+            <div className="text-center py-4 text-gray-500 text-sm">
+              まだ登録されていません
+            </div>
+          ) : (
+            <div className="space-y-3">
+              {items.map((item) => (
+                <div
+                  key={item.id}
+                  className="bg-gray-50 rounded-lg p-3 border border-gray-100 flex justify-between items-center"
+                >
+                  <div>
+                    <h3 className="font-medium text-gray-900 text-sm">
+                      {truncateText(item.name, 12)}
+                    </h3>
+                  </div>
+                  <span className="font-medium text-blue-600 text-sm">
+                    ¥{item.price.toLocaleString()}
+                  </span>
+                </div>
+              ))}
+            </div>
+          )}
+        </div>
+
+        {items.length > 0 && (
+          <div className="mt-4 text-sm text-gray-500 text-center">
+            {items.length}件のほしいものを表示
+          </div>
         )}
       </div>
 
-      {/* プラスボタン */}
+      {/* プラスボタン: フッターに被らないように調整 */}
       <button
         onClick={() => setShowModal(true)}
-        className="fixed bottom-8 right-8 bg-blue-500 hover:bg-blue-600 text-white rounded-full w-14 h-14 flex items-center justify-center shadow-lg text-3xl"
+        className="fixed bottom-20 right-4 bg-blue-500 hover:bg-blue-600 text-white rounded-full w-14 h-14 flex items-center justify-center shadow-lg text-3xl"
         aria-label="追加"
       >
-        ＋
+        <svg
+          className="w-6 h-6 mx-auto"
+          fill="none"
+          stroke="currentColor"
+          viewBox="0 0 24 24"
+        >
+          <path
+            strokeLinecap="round"
+            strokeLinejoin="round"
+            strokeWidth={2}
+            d="M12 6v6m0 0v6m0-6h6m-6 0H6"
+          />
+        </svg>
       </button>
 
-      {/* 追加モーダル */}
+      {/* モーダル */}
       {showModal && (
-        <div className="fixed inset-0 bg-black bg-opacity-30 flex items-center justify-center z-50">
-          <form
-            onSubmit={handleAdd}
-            className="bg-white rounded-lg shadow-lg p-6 w-80 space-y-4"
-          >
-            <h2 className="text-lg font-semibold mb-2">ほしいものを追加</h2>
-            <div>
-              <label className="block text-sm mb-1">名称</label>
-              <input
-                type="text"
-                value={name}
-                onChange={(e) => setName(e.target.value)}
-                className="w-full border border-gray-300 rounded p-2"
-                required
-              />
-            </div>
-            <div>
-              <label className="block text-sm mb-1">値段</label>
-              <input
-                type="number"
-                value={price}
-                onChange={(e) => setPrice(e.target.value)}
-                className="w-full border border-gray-300 rounded p-2"
-                min={0}
-                required
-              />
-            </div>
-            <div className="flex gap-2 mt-4">
-              <button
-                type="submit"
-                className="flex-1 bg-blue-500 text-white py-2 rounded hover:bg-blue-600"
-              >
-                追加
-              </button>
-              <button
-                type="button"
-                onClick={() => setShowModal(false)}
-                className="flex-1 bg-gray-300 text-gray-800 py-2 rounded hover:bg-gray-400"
-              >
-                キャンセル
-              </button>
-            </div>
-          </form>
-        </div>
+        <WishItemModal setShowModal={setShowModal} handleAdd={handleAdd} />
       )}
     </div>
   );
