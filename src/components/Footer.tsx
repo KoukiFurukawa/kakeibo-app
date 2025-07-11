@@ -17,7 +17,9 @@ const footerItems = [
         strokeWidth="2"
         strokeLinecap="round"
         strokeLinejoin="round"
-        className={`w-6 h-6 mx-auto ${isActive ? "text-blue-500" : "text-gray-500"}`}
+        className={`w-6 h-6 mx-auto ${
+          isActive ? "text-blue-500" : "text-gray-500"
+        }`}
       >
         <path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z" />
         <polyline points="9 22 9 12 15 12 15 22" />
@@ -36,7 +38,9 @@ const footerItems = [
         strokeWidth="2"
         strokeLinecap="round"
         strokeLinejoin="round"
-        className={`w-6 h-6 mx-auto ${isActive ? "text-blue-500" : "text-gray-500"}`}
+        className={`w-6 h-6 mx-auto ${
+          isActive ? "text-blue-500" : "text-gray-500"
+        }`}
       >
         <path d="M9 11l3 3 8-8" />
         <path d="M21 12c0 4.97-4.03 9-9 9s-9-4.03-9-9 4.03-9 9-9c1.84 0 3.55.56 4.96 1.51" />
@@ -44,8 +48,8 @@ const footerItems = [
     ),
   },
   {
-    name: "カレンダー",
-    path: "/calendar",
+    name: "ほしいもの",
+    path: "/wishlist",
     icon: (isActive: boolean) => (
       <svg
         xmlns="http://www.w3.org/2000/svg"
@@ -55,12 +59,11 @@ const footerItems = [
         strokeWidth="2"
         strokeLinecap="round"
         strokeLinejoin="round"
-        className={`w-6 h-6 mx-auto ${isActive ? "text-blue-500" : "text-gray-500"}`}
+        className={`w-6 h-6 mx-auto ${
+          isActive ? "text-pink-500" : "text-gray-500"
+        }`}
       >
-        <rect x="3" y="4" width="18" height="18" rx="2" ry="2" />
-        <line x1="16" y1="2" x2="16" y2="6" />
-        <line x1="8" y1="2" x2="8" y2="6" />
-        <line x1="3" y1="10" x2="21" y2="10" />
+        <path d="M12 21C12 21 4 13.5 4 8.5C4 5.42 6.42 3 9.5 3C11.24 3 12.91 3.81 14 5.08C15.09 3.81 16.76 3 18.5 3C21.58 3 24 5.42 24 8.5C24 13.5 16 21 16 21H12Z" />
       </svg>
     ),
   },
@@ -76,7 +79,9 @@ const footerItems = [
         strokeWidth="2"
         strokeLinecap="round"
         strokeLinejoin="round"
-        className={`w-6 h-6 mx-auto ${isActive ? "text-blue-500" : "text-gray-500"}`}
+        className={`w-6 h-6 mx-auto ${
+          isActive ? "text-blue-500" : "text-gray-500"
+        }`}
       >
         <circle cx="12" cy="12" r="3" />
         <path d="M12 1v6m0 6v6m11-7h-6m-6 0H1" />

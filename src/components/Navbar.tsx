@@ -21,6 +21,7 @@ const Navbar = () => {
   const navItems = [
     { name: "ホーム", path: "/" },
     { name: "ToDo", path: "/todo" },
+    { name: "ほしいもの", path: "/wishlist" }, // 追加
     { name: "カレンダー", path: "/calendar" },
     { name: "設定", path: "/settings" },
   ];
@@ -38,6 +39,7 @@ const Navbar = () => {
       "/settings/finance/fixed-costs": "設定",
       "/todo": "ToDo",
       "/calendar": "カレンダー",
+      "/wishlist": "ほしいもの",
       "/": "ホーム",
     };
 
